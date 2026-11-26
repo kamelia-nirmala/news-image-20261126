@@ -20,14 +20,27 @@
     "date": "2026-11-26",
     "lat": 1.35,
     "lon": 103.82,
-    "featured": true,
-    "rank": 11,
-    "big_stat": "HALTED",
+    "featured": false,
     "source_url": "https://www.straitstimes.com/world/united-states/nvidia-halts-server-shipments-to-four-south-east-asian-countries-including-singapore-report"
   },
   {
+    "id": 42,
+    "headline": "Mumbai marks 18 years since 26/11",
+    "region": "Asia",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 18.92,
+    "lon": 72.83,
+    "featured": true,
+    "rank": 11,
+    "big_stat": "18 YEARS",
+    "icon": "candle",
+    "date_evidence": "MUMBAI, November 26 (PTI) - the city paused on Thursday to remember 26/11 on its 18th anniversary",
+    "source_url": "https://theprint.in/india/mumbai-pauses-to-remember-26-11-on-18th-anniversary-as-leaders-pay-floral-tributes-to-bravehearts/3109728/"
+  },
+  {
     "id": 4,
-    "headline": "Myanmar rejects parts of ICJ Rohingya ruling",
+    "headline": "Myanmar rejects ICJ Rohingya ruling",
     "region": "Asia",
     "category": "politics",
     "date": "2026-11-26",
@@ -39,19 +52,8 @@
     "source_url": "https://www.channelnewsasia.com/asia/myanmar-will-not-comply-icj-rohingya-genocide-ruling-6584511"
   },
   {
-    "id": 5,
-    "headline": "Hasina return bid tests Bangladesh politics",
-    "region": "Asia",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 23.81,
-    "lon": 90.41,
-    "featured": false,
-    "source_url": "https://www.thehindu.com/news/international/sheikh-hasinas-return-gambit-tests-bangladeshs-political-fault-lines/article71745537.ece"
-  },
-  {
     "id": 6,
-    "headline": "Nepal moves to declare 213 Indians dead",
+    "headline": "Nepal moves to declare 213 dead",
     "region": "Asia",
     "category": "climate",
     "date": "2026-11-26",
@@ -59,19 +61,8 @@
     "lon": 85.32,
     "featured": true,
     "rank": 5,
-    "big_stat": "213 MISSING",
+    "big_stat": "213 DEAD",
     "source_url": "https://www.thehindu.com/news/national/nepal-flash-floods-kathmandu-begins-process-to-declare-213-indians-missing-presumed-dead/article71745222.ece"
-  },
-  {
-    "id": 7,
-    "headline": "Japan data centre boom sparks local revolt",
-    "region": "Asia",
-    "category": "tech",
-    "date": "2026-11-26",
-    "lat": 35.68,
-    "lon": 139.69,
-    "featured": false,
-    "source_url": "https://www.channelnewsasia.com/east-asia/japans-data-centre-boom-urban-revolt-6584226"
   },
   {
     "id": 8,
@@ -98,7 +89,7 @@
   },
   {
     "id": 9,
-    "headline": "Israel strike kills nine in Gaza, officials",
+    "headline": "Israel strike kills nine in Gaza",
     "region": "Middle East",
     "category": "conflict",
     "date": "2026-11-26",
@@ -143,17 +134,6 @@
     "source_url": "https://www.aljazeera.com/news/2026/11/26/gaza-meningitis-cases-surge-as-collapsing-infrastructure-fuels-health-fears"
   },
   {
-    "id": 13,
-    "headline": "Iran women on death row plead for help",
-    "region": "Middle East",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 35.69,
-    "lon": 51.39,
-    "featured": false,
-    "source_url": "https://www.bbc.co.uk/news/articles/cm8x0ve4yd7wo"
-  },
-  {
     "id": 40,
     "headline": "Saudi coalition downs missiles at Riyadh",
     "region": "Middle East",
@@ -162,12 +142,12 @@
     "lat": 24.71,
     "lon": 46.68,
     "featured": false,
-    "date_evidence": "DUBAI, November 26 (Reuters) - the Saudi-led coalition said early on Thursday it destroyed two Houthi ballistic missiles",
+    "date_evidence": "DUBAI, November 26 (Khaleej Times) - the Saudi-led coalition said early on Thursday it destroyed two Houthi ballistic missiles",
     "source_url": "https://www.khaleejtimes.com/world/mena/us-israel-iran-saudi-arabia-yemen-war-live-updates-november-26-2026"
   },
   {
     "id": 14,
-    "headline": "Ukraine hits Russian base, five jets damaged",
+    "headline": "Ukraine hits base, five jets damaged",
     "region": "Europe",
     "category": "conflict",
     "date": "2026-11-26",
@@ -176,6 +156,7 @@
     "featured": true,
     "rank": 6,
     "big_stat": "5 JETS",
+    "icon": "jet",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/ukraine-attacks-russian-military-base-says-five-planes-struck"
   },
   {
@@ -191,7 +172,7 @@
   },
   {
     "id": 18,
-    "headline": "UK-EU treaty carries 10-year exit clause",
+    "headline": "UK-EU treaty has 10-year exit clause",
     "region": "Europe",
     "category": "politics",
     "date": "2026-11-26",
@@ -200,6 +181,7 @@
     "featured": true,
     "rank": 12,
     "big_stat": "10 YEARS",
+    "icon": "document",
     "source_url": "https://www.bbc.co.uk/news/articles/c98r7p65edvgo"
   },
   {
@@ -222,7 +204,7 @@
     "lat": 49.99,
     "lon": 36.23,
     "featured": false,
-    "date_evidence": "KHARKIV, November 26 (Reuters) - a Russian drone hit a 15th-floor apartment block early on Thursday",
+    "date_evidence": "KHARKIV, November 26 (en.h.ua) - a Russian drone hit a 15th-floor apartment block early on Thursday",
     "source_url": "https://en.h.ua/2026/11/26/russian-drone-strikes-kharkiv-november-26"
   },
   {
@@ -236,6 +218,21 @@
     "featured": false,
     "date_evidence": "PARIS, November 26 (Reuters) - Bardella faced new antisemitism accusations on Thursday after more 2013 chats",
     "source_url": "https://www.yahoo.com/news/articles/french-far-leader-bardella-faces-095805271.html"
+  },
+  {
+    "id": 44,
+    "headline": "Gukesh and Sindarov level at 1-1",
+    "region": "Europe",
+    "category": "sport",
+    "date": "2026-11-26",
+    "lat": 46.22,
+    "lon": 6.18,
+    "featured": true,
+    "rank": 10,
+    "big_stat": "1-1",
+    "icon": "chess",
+    "date_evidence": "COLOGNY, November 26 - game three was due at 15:00 CET on Thursday with the score level at 1-1",
+    "source_url": "https://www.chess.com/news/view/2026-fide-world-chess-championship-game-3"
   },
   {
     "id": 20,
@@ -270,6 +267,7 @@
     "featured": true,
     "rank": 1,
     "big_stat": "12,000",
+    "icon": "virus",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/dr-congo-ebola-cases-surpass-12000-as-fighting-disrupts-response-in-east"
   },
   {
@@ -285,7 +283,7 @@
   },
   {
     "id": 24,
-    "headline": "Gunmen kill at least 30 in Niger state",
+    "headline": "Gunmen kill 30 in Niger state",
     "region": "Africa",
     "category": "conflict",
     "date": "2026-11-26",
@@ -315,10 +313,23 @@
     "date": "2026-11-26",
     "lat": 26.7,
     "lon": -80.05,
+    "featured": false,
+    "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
+  },
+  {
+    "id": 43,
+    "headline": "Macy's 100th parade put off to Saturday",
+    "region": "North America",
+    "category": "climate",
+    "date": "2026-11-26",
+    "lat": 40.75,
+    "lon": -73.99,
     "featured": true,
     "rank": 9,
-    "big_stat": "WARNS",
-    "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
+    "big_stat": "100TH",
+    "icon": "balloon",
+    "date_evidence": "NEW YORK, November 26 - the 100th parade, due on Thursday, was pushed to Saturday 28 November by a nor'easter",
+    "source_url": "https://tribune.com.pk/story/2642458/macys-thanksgiving-day-parade-postponed-for-the-first-time-in-100-years-due-to-noreaster"
   },
   {
     "id": 29,
@@ -357,7 +368,7 @@
   },
   {
     "id": 32,
-    "headline": "FCC clears SpaceX for 1 million satellites",
+    "headline": "FCC clears SpaceX for 1M satellites",
     "region": "North America",
     "category": "science",
     "date": "2026-11-26",
@@ -387,14 +398,12 @@
     "date": "2026-11-26",
     "lat": -15.79,
     "lon": -47.88,
-    "featured": true,
-    "rank": 10,
-    "big_stat": "TARIFFS",
+    "featured": false,
     "source_url": "https://www.aljazeera.com/news/2026/11/26/brazil-blasts-unacceptable-new-us-tariff-proposals"
   },
   {
     "id": 41,
-    "headline": "Argentina Senate moves to suspend primaries",
+    "headline": "Argentina Senate weighs suspending primaries",
     "region": "Latin America",
     "category": "politics",
     "date": "2026-11-26",

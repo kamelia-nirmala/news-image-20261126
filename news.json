@@ -8,8 +8,8 @@
     "lat": -6.55,
     "lon": 106.75,
     "featured": true,
-    "rank": 2,
-    "big_stat": "13",
+    "rank": 3,
+    "big_stat": "13 DEAD",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/at-least-13-dead-in-indonesia-gold-mine-flood-as-rescue-efforts-intensify"
   },
   {
@@ -21,8 +21,8 @@
     "lat": 1.35,
     "lon": 103.82,
     "featured": true,
-    "rank": 7,
-    "big_stat": "NVIDIA",
+    "rank": 11,
+    "big_stat": "HALTED",
     "source_url": "https://www.straitstimes.com/world/united-states/nvidia-halts-server-shipments-to-four-south-east-asian-countries-including-singapore-report"
   },
   {
@@ -45,8 +45,8 @@
     "lat": 19.75,
     "lon": 96.1,
     "featured": true,
-    "rank": 10,
-    "big_stat": "MYANMAR",
+    "rank": 13,
+    "big_stat": "REJECTS",
     "source_url": "https://www.channelnewsasia.com/asia/myanmar-will-not-comply-icj-rohingya-genocide-ruling-6584511"
   },
   {
@@ -68,7 +68,9 @@
     "date": "2026-11-26",
     "lat": 27.72,
     "lon": 85.32,
-    "featured": false,
+    "featured": true,
+    "rank": 5,
+    "big_stat": "213 MISSING",
     "source_url": "https://www.thehindu.com/news/national/nepal-flash-floods-kathmandu-begins-process-to-declare-213-indians-missing-presumed-dead/article71745222.ece"
   },
   {
@@ -102,8 +104,8 @@
     "lat": 31.42,
     "lon": 34.35,
     "featured": true,
-    "rank": 3,
-    "big_stat": "NINE",
+    "rank": 4,
+    "big_stat": "9 DEAD",
     "source_url": "https://www.straitstimes.com/world/middle-east/israel-kills-nine-in-gaza-including-hamas-appointed-deputy-education-minister-officials-say"
   },
   {
@@ -159,8 +161,8 @@
     "lat": 55.43,
     "lon": 42.31,
     "featured": true,
-    "rank": 9,
-    "big_stat": "FIVE",
+    "rank": 6,
+    "big_stat": "5 JETS",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/ukraine-attacks-russian-military-base-says-five-planes-struck"
   },
   {
@@ -182,9 +184,7 @@
     "date": "2026-11-26",
     "lat": 38.9,
     "lon": 1.43,
-    "featured": true,
-    "rank": 6,
-    "big_stat": "IBIZA",
+    "featured": false,
     "source_url": "https://www.straitstimes.com/world/europe/crew-member-dies-after-diesel-tanker-sinks-off-ibiza-spain-launches-pollution-plan"
   },
   {
@@ -206,20 +206,20 @@
     "date": "2026-11-26",
     "lat": 51.5,
     "lon": -0.12,
-    "featured": false,
+    "featured": true,
+    "rank": 12,
+    "big_stat": "10 YEARS",
     "source_url": "https://www.bbc.co.uk/news/articles/c98r7p65edvgo"
   },
   {
     "id": 19,
-    "headline": "Sinner out of Australian Open after surgery",
-    "region": "Oceania",
+    "headline": "Sinner officially out of Australian Open",
+    "region": "Europe",
     "category": "sport",
     "date": "2026-11-26",
-    "lat": -37.81,
-    "lon": 144.96,
-    "featured": true,
-    "rank": 11,
-    "big_stat": "SINNER",
+    "lat": 60.17,
+    "lon": 24.94,
+    "featured": false,
     "source_url": "https://www.bbc.co.uk/sport/tennis/articles/c6x29q88r9v5o"
   },
   {
@@ -241,9 +241,7 @@
     "date": "2026-11-26",
     "lat": 49.87,
     "lon": 8.65,
-    "featured": true,
-    "rank": 12,
-    "big_stat": "DART",
+    "featured": false,
     "source_url": "https://www.straitstimes.com/world/united-states/new-images-reveal-crater-on-asteroid-struck-by-dart-spacecraft"
   },
   {
@@ -279,8 +277,8 @@
     "lat": 9.88,
     "lon": 4.51,
     "featured": true,
-    "rank": 4,
-    "big_stat": "30",
+    "rank": 2,
+    "big_stat": "30+ DEAD",
     "source_url": "https://www.straitstimes.com/world/suspected-militants-kill-at-least-30-in-nigerias-niger-state-residents-say"
   },
   {
@@ -314,8 +312,8 @@
     "lat": 26.7,
     "lon": -80.05,
     "featured": true,
-    "rank": 13,
-    "big_stat": "TRUMP",
+    "rank": 9,
+    "big_stat": "WARNS",
     "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
   },
   {
@@ -337,7 +335,9 @@
     "date": "2026-11-26",
     "lat": 33.75,
     "lon": -84.39,
-    "featured": false,
+    "featured": true,
+    "rank": 7,
+    "big_stat": "9 DEAD",
     "source_url": "https://www.straitstimes.com/world/united-states/us-cdc-reports-nine-measles-related-deaths-in-2026"
   },
   {
@@ -348,9 +348,7 @@
     "date": "2026-11-26",
     "lat": 34.05,
     "lon": -118.24,
-    "featured": true,
-    "rank": 8,
-    "big_stat": "TIDES",
+    "featured": false,
     "source_url": "https://www.bbc.co.uk/news/articles/ckn806qq760po"
   },
   {
@@ -372,7 +370,9 @@
     "date": "2026-11-26",
     "lat": 38.9,
     "lon": -77.03,
-    "featured": false,
+    "featured": true,
+    "rank": 8,
+    "big_stat": "1M SATS",
     "source_url": "https://www.npr.org/2026/11/26/g-s1-155940/fcc-spacex-satellites-data-centers-in-space"
   },
   {
@@ -395,8 +395,8 @@
     "lat": -15.79,
     "lon": -47.88,
     "featured": true,
-    "rank": 5,
-    "big_stat": "BRAZIL",
+    "rank": 10,
+    "big_stat": "TARIFFS",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/brazil-blasts-unacceptable-new-us-tariff-proposals"
   },
   {
@@ -412,13 +412,14 @@
   },
   {
     "id": 36,
-    "headline": "Chile congress row over Pinochet tribute",
+    "headline": "Colombia drops bid to join BRICS bank",
     "region": "Latin America",
-    "category": "politics",
+    "category": "economy",
     "date": "2026-11-26",
-    "lat": -33.05,
-    "lon": -71.62,
+    "lat": 4.71,
+    "lon": -74.07,
     "featured": false,
-    "source_url": "https://www.clarin.com/mundo/escandalo-congreso-chile-diputada-reivindico-augusto-pinochet-deseo-feliz-cumpleanos-pleno-debate-presupuesto_0_uqsPBGAxSa.html"
+    "date_evidence": "BUENOS AIRES, November 26. /TASS/. The Colombian government will not complete the process of joining the BRICS New Development Bank",
+    "source_url": "https://tass.com/economy/2225001"
   }
 ]

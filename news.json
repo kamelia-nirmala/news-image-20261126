@@ -26,17 +26,6 @@
     "source_url": "https://www.straitstimes.com/world/united-states/nvidia-halts-server-shipments-to-four-south-east-asian-countries-including-singapore-report"
   },
   {
-    "id": 3,
-    "headline": "Apple pulls MiniMax AI app over child safety",
-    "region": "Asia",
-    "category": "tech",
-    "date": "2026-11-26",
-    "lat": 31.23,
-    "lon": 121.47,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/apple-pulls-minimax-ai-chatbot-from-app-store-over-child-safety-concerns"
-  },
-  {
     "id": 4,
     "headline": "Myanmar rejects parts of ICJ Rohingya ruling",
     "region": "Asia",
@@ -96,6 +85,18 @@
     "source_url": "https://www.koreatimes.co.kr/economy/20261126/kospi-edges-up-despite-bok-rate-hike"
   },
   {
+    "id": 38,
+    "headline": "China urges Japan to stop sea provocation",
+    "region": "Asia",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 39.9,
+    "lon": 116.4,
+    "featured": false,
+    "date_evidence": "BEIJING, November 26 (Reuters) - the defence ministry urged Japan on Thursday to stop stirring up trouble",
+    "source_url": "https://www.yahoo.com/news/articles/chinas-defence-ministry-urges-japan-082502004.html"
+  },
+  {
     "id": 9,
     "headline": "Israel strike kills nine in Gaza, officials",
     "region": "Middle East",
@@ -153,6 +154,18 @@
     "source_url": "https://www.bbc.co.uk/news/articles/cm8x0ve4yd7wo"
   },
   {
+    "id": 40,
+    "headline": "Saudi coalition downs missiles at Riyadh",
+    "region": "Middle East",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 24.71,
+    "lon": 46.68,
+    "featured": false,
+    "date_evidence": "DUBAI, November 26 (Reuters) - the Saudi-led coalition said early on Thursday it destroyed two Houthi ballistic missiles",
+    "source_url": "https://www.khaleejtimes.com/world/mena/us-israel-iran-saudi-arabia-yemen-war-live-updates-november-26-2026"
+  },
+  {
     "id": 14,
     "headline": "Ukraine hits Russian base, five jets damaged",
     "region": "Europe",
@@ -166,17 +179,6 @@
     "source_url": "https://www.aljazeera.com/news/2026/11/26/ukraine-attacks-russian-military-base-says-five-planes-struck"
   },
   {
-    "id": 15,
-    "headline": "Russian ballistic missiles strike Kyiv",
-    "region": "Europe",
-    "category": "conflict",
-    "date": "2026-11-26",
-    "lat": 50.45,
-    "lon": 30.52,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/europe/russian-forces-hit-kyiv-with-ballistic-missiles-mayor-says"
-  },
-  {
     "id": 16,
     "headline": "Diesel tanker sinks off Ibiza, crew dies",
     "region": "Europe",
@@ -186,17 +188,6 @@
     "lon": 1.43,
     "featured": false,
     "source_url": "https://www.straitstimes.com/world/europe/crew-member-dies-after-diesel-tanker-sinks-off-ibiza-spain-launches-pollution-plan"
-  },
-  {
-    "id": 17,
-    "headline": "Murmansk governor held on corruption",
-    "region": "Europe",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 68.97,
-    "lon": 33.08,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/europe/head-of-russias-murmansk-region-placed-in-pre-trial-detention-on-corruption-charges"
   },
   {
     "id": 18,
@@ -221,6 +212,30 @@
     "lon": 24.94,
     "featured": false,
     "source_url": "https://www.bbc.co.uk/sport/tennis/articles/c6x29q88r9v5o"
+  },
+  {
+    "id": 37,
+    "headline": "Russian drone kills two in Kharkiv tower",
+    "region": "Europe",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 49.99,
+    "lon": 36.23,
+    "featured": false,
+    "date_evidence": "KHARKIV, November 26 (Reuters) - a Russian drone hit a 15th-floor apartment block early on Thursday",
+    "source_url": "https://en.h.ua/2026/11/26/russian-drone-strikes-kharkiv-november-26"
+  },
+  {
+    "id": 39,
+    "headline": "Bardella faces new antisemitism claims",
+    "region": "Europe",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 48.86,
+    "lon": 2.35,
+    "featured": false,
+    "date_evidence": "PARIS, November 26 (Reuters) - Bardella faced new antisemitism accusations on Thursday after more 2013 chats",
+    "source_url": "https://www.yahoo.com/news/articles/french-far-leader-bardella-faces-095805271.html"
   },
   {
     "id": 20,
@@ -282,17 +297,6 @@
     "source_url": "https://www.straitstimes.com/world/suspected-militants-kill-at-least-30-in-nigerias-niger-state-residents-say"
   },
   {
-    "id": 25,
-    "headline": "UN evacuates Ebola staff in east Congo",
-    "region": "Africa",
-    "category": "health",
-    "date": "2026-11-26",
-    "lat": -1.68,
-    "lon": 29.22,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/un-peacekeepers-evacuate-ebola-response-workers-trapped-by-fighting-in-eastern-congo"
-  },
-  {
     "id": 26,
     "headline": "War and drought squeeze Sudan's farmers",
     "region": "Africa",
@@ -315,17 +319,6 @@
     "rank": 9,
     "big_stat": "WARNS",
     "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
-  },
-  {
-    "id": 28,
-    "headline": "Second judge blocks birthright order",
-    "region": "North America",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 38.9,
-    "lon": -77.03,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/united-states/trumps-newest-order-curtailing-birthright-citizenship-is-blocked-by-second-judge"
   },
   {
     "id": 29,
@@ -388,7 +381,7 @@
   },
   {
     "id": 34,
-    "headline": "Brazil calls new US tariffs unacceptable",
+    "headline": "Brazil blasts new US tariff proposals",
     "region": "Latin America",
     "category": "economy",
     "date": "2026-11-26",
@@ -398,6 +391,18 @@
     "rank": 10,
     "big_stat": "TARIFFS",
     "source_url": "https://www.aljazeera.com/news/2026/11/26/brazil-blasts-unacceptable-new-us-tariff-proposals"
+  },
+  {
+    "id": 41,
+    "headline": "Argentina Senate moves to suspend primaries",
+    "region": "Latin America",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": -34.6,
+    "lon": -58.38,
+    "featured": false,
+    "date_evidence": "BUENOS AIRES, November 26 (Reuters) - the Senate was due on Thursday to weigh a bill suspending primary elections",
+    "source_url": "https://theprint.in/world/argentinas-senate-poised-to-suspend-primaries-boosting-mileis-re-election-bid/3109769/"
   },
   {
     "id": 35,

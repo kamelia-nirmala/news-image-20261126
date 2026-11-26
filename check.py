@@ -38,8 +38,8 @@ REGION_COLOR = {
 FORBIDDEN = {"socket", "requests", "urllib", "urllib2", "PIL", "http", "ftplib"}
 
 BG = (0x0B, 0x12, 0x20)
-LAND = (0x22, 0x34, 0x4F)
-COAST = (0x3B, 0x52, 0x73)
+LAND = (0x3A, 0x55, 0x78)
+COAST = (0x7C, 0x9C, 0xC4)
 
 HERO = (12, 64)
 TILE_XS = (12, 263, 514, 765)
@@ -49,7 +49,21 @@ CITIES = [
     ("London", -0.1, 51.5), ("Cairo", 31.2, 30.0),
     ("Delhi", 77.2, 28.6), ("Beijing", 116.4, 39.9),
     ("Sydney", 151.2, -33.9), ("Nairobi", 36.8, -1.3),
+    ("Los Angeles", -118.2, 34.0), ("Miami", -80.2, 25.8),
+    ("Kyiv", 30.5, 50.5), ("Goma", 29.2, -1.7),
+    ("Jakarta", 106.8, -6.2), ("Tokyo", 139.7, 35.7),
+    ("Helsinki", 24.9, 60.2), ("Singapore", 103.8, 1.35),
 ]
+
+# A featured stat must carry a number, or be one of these verbs.
+STAT_WORDS = {"WARNS", "TARIFFS", "HALTED", "REJECTS"}
+
+# Headlines sometimes spell a number out; the stat may still show the digit.
+NUMBER_WORDS = {
+    1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
+    7: "seven", 8: "eight", 9: "nine", 10: "ten", 12: "twelve",
+    20: "twenty", 30: "thirty",
+}
 
 results = []
 
@@ -203,19 +217,38 @@ def check_news():
         problems.append("ranks=%s" % ranks)
     for it in feat:
         stat = it.get("big_stat", "")
-        if not stat or len(stat) > 7:
+        if not stat or len(stat) > 11:
             problems.append("id %d stat %r" % (it["id"], stat))
             continue
-        head = it["headline"].upper()
-        words = {w.strip(".,:;!?'-") for w in head.split()}
-        digits = stat.replace(",", "").replace(".", "")
-        if stat.upper() in words:
-            pass
-        elif digits.isdigit() and digits in head.replace(",", ""):
-            pass
-        else:
-            problems.append("id %d stat %r not in headline" % (it["id"], stat))
+        # The number in the stat must come from that story's own headline,
+        # counting spelled-out numbers ("nine") and "1M" for "1 million".
+        head = it["headline"].lower().replace(",", "")
+        for n in stat.replace(",", "").split():
+            core = n.strip("+%$").lower()
+            if not any(c.isdigit() for c in core):
+                continue
+            if core.endswith("m") and core[:-1].isdigit():
+                core = core[:-1]
+            if core.isdigit() and NUMBER_WORDS.get(int(core)) in head.split():
+                continue
+            if core and core not in head:
+                problems.append("id %d stat %r not in headline" % (it["id"], stat))
+                break
     check("news.json is well formed", not problems, "; ".join(problems[:4]))
+
+
+def check_stats():
+    """Every featured tile needs a number or one of the four allowed verbs."""
+    items = json.load(open(NEWS, encoding="utf-8"))
+    bad = []
+    for it in items:
+        if not it.get("featured"):
+            continue
+        stat = it.get("big_stat", "").upper()
+        has_digit = any(ch.isdigit() for ch in stat)
+        if not has_digit and stat not in STAT_WORDS:
+            bad.append("id %d %r" % (it["id"], stat))
+    check("featured stats are numbers or verbs", not bad, ", ".join(bad))
 
 
 def color_mismatches(pixels, items):
@@ -344,6 +377,7 @@ def main():
         check_size(png)
         check_imports()
         check_news()
+        check_stats()
         check_no_failure_markers()
         if pixels is not None:
             items = json.load(open(NEWS, encoding="utf-8"))

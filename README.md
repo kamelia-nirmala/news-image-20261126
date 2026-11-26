@@ -7,7 +7,7 @@ A single 1024x1024 PNG that sums up the world's news of Thursday 26 November 202
 | File | Contents |
 |---|---|
 | `main.py` | The generator. Reads `news.json`, draws the poster, writes `entry.png`. |
-| `check.py` | Ten checks over the output and the data, plus a `--selftest` that proves the pixel checks fail when they should. |
+| `check.py` | Twelve checks over the output and the data, plus a `--selftest` that proves the pixel checks fail when they should. |
 | `news.json` | The 36 stories as data: `id`, `headline`, `region`, `category`, `date`, `lat`, `lon`, `featured`, `rank`, `big_stat`, `source_url`. |
 | `entry.png` | The rendered poster. |
 | `LICENSE` | MIT. |
@@ -42,7 +42,7 @@ MAKEFUN_OUTPUT_DIR=/tmp/out python3 main.py
 ## Check it
 
 ```sh
-python3 check.py            # ten checks, then PASS or FAIL
+python3 check.py            # twelve checks, then PASS or FAIL
 python3 check.py --selftest # also tampers with two copies to prove the checks bite
 ```
 

@@ -39,6 +39,17 @@
     "source_url": "https://www.channelnewsasia.com/asia/myanmar-will-not-comply-icj-rohingya-genocide-ruling-6584511"
   },
   {
+    "id": 5,
+    "headline": "Hasina return bid tests Bangladesh politics",
+    "region": "Asia",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 23.81,
+    "lon": 90.41,
+    "featured": false,
+    "source_url": "https://www.thehindu.com/news/international/sheikh-hasinas-return-gambit-tests-bangladeshs-political-fault-lines/article71745537.ece"
+  },
+  {
     "id": 6,
     "headline": "Nepal moves to declare 213 Indians dead",
     "region": "Asia",
@@ -74,6 +85,18 @@
     "source_url": "https://www.koreatimes.co.kr/economy/20261126/kospi-edges-up-despite-bok-rate-hike"
   },
   {
+    "id": 38,
+    "headline": "China urges Japan to stop sea provocation",
+    "region": "Asia",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 39.9,
+    "lon": 116.4,
+    "featured": false,
+    "date_evidence": "BEIJING, November 26 (Reuters) - the defence ministry urged Japan on Thursday to stop stirring up trouble",
+    "source_url": "https://www.yahoo.com/news/articles/chinas-defence-ministry-urges-japan-082502004.html"
+  },
+  {
     "id": 9,
     "headline": "Israel strike kills nine in Gaza, officials",
     "region": "Middle East",
@@ -88,17 +111,14 @@
   },
   {
     "id": 10,
-    "headline": "Iraq jails eight French IS fighters",
+    "headline": "Iraq jails eight French IS fighters for life",
     "region": "Middle East",
     "category": "politics",
     "date": "2026-11-26",
     "lat": 33.31,
     "lon": 44.36,
-    "featured": true,
-    "source_url": "https://english.alarabiya.net/News/middle-east/2026/11/26/iraq-court-sentences-eight-french-nationals-to-life-in-prison-for-joining-isis",
-    "rank": 9,
-    "big_stat": "JAILS",
-    "date_evidence": "BAGHDAD, Nov 26 (AFP) - an Iraqi court sentenced eight French nationals to life in prison for joining ISIS, and two others to 15 years. https://english.alarabiya.net/News/middle-east/2026/11/26/iraq-court-sentences-eight-french-nationals-to-life-in-prison-for-joining-isis"
+    "featured": false,
+    "source_url": "https://www.straitstimes.com/world/middle-east/iraq-court-sentences-8-french-nationals-to-life-in-prison-for-joining-isis"
   },
   {
     "id": 11,
@@ -132,6 +152,18 @@
     "lon": 51.39,
     "featured": false,
     "source_url": "https://www.bbc.co.uk/news/articles/cm8x0ve4yd7wo"
+  },
+  {
+    "id": 40,
+    "headline": "Saudi coalition downs missiles at Riyadh",
+    "region": "Middle East",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 24.71,
+    "lon": 46.68,
+    "featured": false,
+    "date_evidence": "DUBAI, November 26 (Reuters) - the Saudi-led coalition said early on Thursday it destroyed two Houthi ballistic missiles",
+    "source_url": "https://www.khaleejtimes.com/world/mena/us-israel-iran-saudi-arabia-yemen-war-live-updates-november-26-2026"
   },
   {
     "id": 14,
@@ -182,6 +214,30 @@
     "source_url": "https://www.bbc.co.uk/sport/tennis/articles/c6x29q88r9v5o"
   },
   {
+    "id": 37,
+    "headline": "Russian drone kills two in Kharkiv tower",
+    "region": "Europe",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 49.99,
+    "lon": 36.23,
+    "featured": false,
+    "date_evidence": "KHARKIV, November 26 (Reuters) - a Russian drone hit a 15th-floor apartment block early on Thursday",
+    "source_url": "https://en.h.ua/2026/11/26/russian-drone-strikes-kharkiv-november-26"
+  },
+  {
+    "id": 39,
+    "headline": "Bardella faces new antisemitism claims",
+    "region": "Europe",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 48.86,
+    "lon": 2.35,
+    "featured": false,
+    "date_evidence": "PARIS, November 26 (Reuters) - Bardella faced new antisemitism accusations on Thursday after more 2013 chats",
+    "source_url": "https://www.yahoo.com/news/articles/french-far-leader-bardella-faces-095805271.html"
+  },
+  {
     "id": 20,
     "headline": "OPEC blames EU for COP31 collapse",
     "region": "Global",
@@ -191,6 +247,17 @@
     "lon": 4.35,
     "featured": false,
     "source_url": "https://www.japantimes.co.jp/environment/2026/11/26/climate-change/opec-eu-cop31-collapse/"
+  },
+  {
+    "id": 21,
+    "headline": "New images show DART crater on Dimorphos",
+    "region": "Europe",
+    "category": "science",
+    "date": "2026-11-26",
+    "lat": 49.87,
+    "lon": 8.65,
+    "featured": false,
+    "source_url": "https://www.straitstimes.com/world/united-states/new-images-reveal-crater-on-asteroid-struck-by-dart-spacecraft"
   },
   {
     "id": 22,
@@ -217,6 +284,19 @@
     "source_url": "https://www.straitstimes.com/world/kenya-breached-constitution-in-building-us-backed-ebola-quarantine-site-court-says"
   },
   {
+    "id": 24,
+    "headline": "Gunmen kill at least 30 in Niger state",
+    "region": "Africa",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 9.88,
+    "lon": 4.51,
+    "featured": true,
+    "rank": 2,
+    "big_stat": "30+ DEAD",
+    "source_url": "https://www.straitstimes.com/world/suspected-militants-kill-at-least-30-in-nigerias-niger-state-residents-say"
+  },
+  {
     "id": 26,
     "headline": "War and drought squeeze Sudan's farmers",
     "region": "Africa",
@@ -226,6 +306,32 @@
     "lon": 32.56,
     "featured": false,
     "source_url": "https://www.aljazeera.com/features/2026/11/26/war-and-drought-threaten-livelihoods-of-sudans-farmers"
+  },
+  {
+    "id": 27,
+    "headline": "Trump and NATO chief warn Russia on war",
+    "region": "North America",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 26.7,
+    "lon": -80.05,
+    "featured": true,
+    "rank": 9,
+    "big_stat": "WARNS",
+    "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
+  },
+  {
+    "id": 29,
+    "headline": "US measles deaths reach nine in 2026",
+    "region": "North America",
+    "category": "health",
+    "date": "2026-11-26",
+    "lat": 33.75,
+    "lon": -84.39,
+    "featured": true,
+    "rank": 7,
+    "big_stat": "9 DEAD",
+    "source_url": "https://www.straitstimes.com/world/united-states/us-cdc-reports-nine-measles-related-deaths-in-2026"
   },
   {
     "id": 30,
@@ -250,6 +356,19 @@
     "source_url": "https://www.bbc.co.uk/news/articles/ckm2mz3prq77o"
   },
   {
+    "id": 32,
+    "headline": "FCC clears SpaceX for 1 million satellites",
+    "region": "North America",
+    "category": "science",
+    "date": "2026-11-26",
+    "lat": 38.9,
+    "lon": -77.03,
+    "featured": true,
+    "rank": 8,
+    "big_stat": "1M SATS",
+    "source_url": "https://www.npr.org/2026/11/26/g-s1-155940/fcc-spacex-satellites-data-centers-in-space"
+  },
+  {
     "id": 33,
     "headline": "Puerto Rico court voids power contract",
     "region": "Latin America",
@@ -259,6 +378,42 @@
     "lon": -66.11,
     "featured": false,
     "source_url": "https://www.aljazeera.com/news/2026/11/26/puerto-ricos-supreme-court-cancels-major-power-contract"
+  },
+  {
+    "id": 34,
+    "headline": "Brazil blasts new US tariff proposals",
+    "region": "Latin America",
+    "category": "economy",
+    "date": "2026-11-26",
+    "lat": -15.79,
+    "lon": -47.88,
+    "featured": true,
+    "rank": 10,
+    "big_stat": "TARIFFS",
+    "source_url": "https://www.aljazeera.com/news/2026/11/26/brazil-blasts-unacceptable-new-us-tariff-proposals"
+  },
+  {
+    "id": 41,
+    "headline": "Argentina Senate moves to suspend primaries",
+    "region": "Latin America",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": -34.6,
+    "lon": -58.38,
+    "featured": false,
+    "date_evidence": "BUENOS AIRES, November 26 (Reuters) - the Senate was due on Thursday to weigh a bill suspending primary elections",
+    "source_url": "https://theprint.in/world/argentinas-senate-poised-to-suspend-primaries-boosting-mileis-re-election-bid/3109769/"
+  },
+  {
+    "id": 35,
+    "headline": "Flinders Island fire destroys homes",
+    "region": "Oceania",
+    "category": "climate",
+    "date": "2026-11-26",
+    "lat": -40.0,
+    "lon": 148.0,
+    "featured": false,
+    "source_url": "https://www.theguardian.com/australia-news/2026/nov/25/large-bushfire-threatens-homes-and-properties-on-remote-island-off-tasmania"
   },
   {
     "id": 36,
@@ -271,125 +426,5 @@
     "featured": false,
     "date_evidence": "BUENOS AIRES, November 26. /TASS/. The Colombian government will not complete the process of joining the BRICS New Development Bank",
     "source_url": "https://tass.com/economy/2225001"
-  },
-  {
-    "id": 37,
-    "headline": "Russian drone kills two in Kharkiv tower",
-    "region": "Europe",
-    "category": "conflict",
-    "date": "2026-11-26",
-    "lat": 49.99,
-    "lon": 36.23,
-    "featured": false,
-    "date_evidence": "KHARKIV, November 26 (en.h.ua) - a Russian drone hit a 15th-floor apartment block early on Thursday",
-    "source_url": "https://en.h.ua/2026/11/26/russian-drone-strikes-kharkiv-november-26"
-  },
-  {
-    "id": 38,
-    "headline": "China urges Japan to stop sea provocation",
-    "region": "Asia",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 39.9,
-    "lon": 116.4,
-    "featured": false,
-    "date_evidence": "BEIJING, November 26 (Reuters) - the defence ministry urged Japan on Thursday to stop stirring up trouble",
-    "source_url": "https://www.yahoo.com/news/articles/chinas-defence-ministry-urges-japan-082502004.html"
-  },
-  {
-    "id": 39,
-    "headline": "Bardella faces new antisemitism claims",
-    "region": "Europe",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 48.86,
-    "lon": 2.35,
-    "featured": false,
-    "date_evidence": "PARIS, November 26 (Reuters) - Bardella faced new antisemitism accusations on Thursday after more 2013 chats",
-    "source_url": "https://www.yahoo.com/news/articles/french-far-leader-bardella-faces-095805271.html"
-  },
-  {
-    "id": 40,
-    "headline": "Saudi coalition downs missiles at Riyadh",
-    "region": "Middle East",
-    "category": "conflict",
-    "date": "2026-11-26",
-    "lat": 24.71,
-    "lon": 46.68,
-    "featured": false,
-    "date_evidence": "DUBAI, November 26 (Khaleej Times) - the Saudi-led coalition said early on Thursday it destroyed two Houthi ballistic missiles aimed at Riyadh",
-    "source_url": "https://www.khaleejtimes.com/world/mena/us-israel-iran-saudi-arabia-yemen-war-live-updates-november-26-2026"
-  },
-  {
-    "id": 41,
-    "headline": "Argentina Senate weighs suspending primaries",
-    "region": "Latin America",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": -34.6,
-    "lon": -58.38,
-    "featured": false,
-    "date_evidence": "BUENOS AIRES, November 26 (Reuters) - the Senate was due on Thursday to weigh a bill suspending primary elections",
-    "source_url": "https://theprint.in/world/argentinas-senate-poised-to-suspend-primaries-boosting-mileis-re-election-bid/3109769/"
-  },
-  {
-    "id": 42,
-    "headline": "Mumbai marks 18 years since 26/11",
-    "region": "Asia",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 18.92,
-    "lon": 72.83,
-    "featured": true,
-    "rank": 10,
-    "big_stat": "18 YEARS",
-    "scene": "mumbai",
-    "source": "PTI",
-    "status": "REPORTED",
-    "date_evidence": "MUMBAI, November 26 (PTI) - the city paused on Thursday to remember 26/11 on its 18th anniversary",
-    "source_url": "https://theprint.in/india/mumbai-pauses-to-remember-26-11-on-18th-anniversary-as-leaders-pay-floral-tributes-to-bravehearts/3109728/",
-    "icon": "candle"
-  },
-  {
-    "id": 44,
-    "headline": "Gukesh, Sindarov draw Game 3",
-    "region": "Europe",
-    "category": "sport",
-    "date": "2026-11-26",
-    "lat": 46.2,
-    "lon": 6.14,
-    "featured": true,
-    "rank": 8,
-    "big_stat": "1.5-1.5",
-    "date_evidence": "GENEVA, November 26 - game three was played on Thursday 26 November and ended drawn after 60 moves, so the match stands at 1.5-1.5; FIDE posted the result on 26 November 2026. https://www.beloud.com/news/149505584 and https://english.dainikjagranmpcg.com/sports/-gukesh-vs-sindarov-game-3-draw-world-championship-score/article-46887",
-    "source_url": "https://www.beloud.com/news/149505584"
-  },
-  {
-    "id": 45,
-    "headline": "Kremlin accuses Kyiv of wider war",
-    "region": "Europe",
-    "category": "conflict",
-    "date": "2026-11-26",
-    "lat": 55.76,
-    "lon": 37.62,
-    "featured": true,
-    "rank": 2,
-    "big_stat": "ACCUSES",
-    "date_evidence": "MOSCOW, Nov 26 (Reuters) - the Kremlin said on Thursday that Ukraine was trying to widen the war to the Mediterranean and the Baltic Sea and called it very dangerous; spokesman Dmitry Peskov said it was Kyiv, not Russia, that was expanding the conflict zone. https://www.yahoo.com/news/world/articles/kremlin-accuses-ukraine-trying-widen-102221905.html",
-    "source_url": "https://www.yahoo.com/news/world/articles/kremlin-accuses-ukraine-trying-widen-102221905.html"
-  },
-  {
-    "id": 46,
-    "headline": "EU leaders wrestle 1.58T EUR budget",
-    "region": "Europe",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 50.85,
-    "lon": 4.35,
-    "featured": true,
-    "rank": 7,
-    "big_stat": "1.58T EUR",
-    "date_evidence": "BRUSSELS, Nov 26 (Reuters) - EU leaders at a Thursday summit wrestled over the 2028-2034 budget worth 1.582 trillion euros and over Ukraine financing including a 45 billion euro loan; a deal is targeted for 17 and 18 December. https://theprint.in/world/leaders-wrestle-over-eus-budget-ukraine-financing-as-le-pen-focuses-minds/3109796/",
-    "source_url": "https://theprint.in/world/leaders-wrestle-over-eus-budget-ukraine-financing-as-le-pen-focuses-minds/3109796/"
   }
 ]

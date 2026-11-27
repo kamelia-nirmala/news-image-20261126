@@ -58,21 +58,22 @@ CITIES = [
 ]
 
 # A featured stat must carry a number, or be one of these verbs.
-STAT_WORDS = {"ACCUSES", "JAILS", "TARIFFS", "HALTED", "REJECTS"}
+STAT_WORDS = {"ACCUSES", "JAILS", "HALTED", "REJECTS"}
 
-# The five 25 November stories are gone for good, and so is the Macy's
-# parade entry that never had a verified date.  None of these names may
-# appear on the poster again.
-FORBIDDEN_WORDS = ("NIGER", "MEASLES", "FCC", "SPACEX", "FLINDERS",
+# The 25 November stories are gone for good, and so is the Macy's parade
+# entry that never had a verified date.  Brazil's tariff story, the DART
+# image release and the Hasina story were first reported on 25 November or
+# earlier, so they are out too.  None of these names may appear again.
+FORBIDDEN_WORDS = ("BRAZIL", "TARIFF", "DART", "DIMORPHOS", "HASINA",
+                   "NIGER", "MEASLES", "FCC", "SPACEX", "FLINDERS",
                    "TRUMP", "MACY")
 
 # v2's geometry, which this pass must not disturb: 13 numbered tiles,
-# three list columns at the same pitch, 13 pins.  The list drops to 21
-# rows because five stories left and only four replacements exist, so the
-# three columns are filled evenly at 7/7/7 rather than 8/8/7.
+# three list columns at the same pitch, 13 pins.  Three stories left and
+# one Mumbai story came back, so the list is 19 rows in columns of 7/6/6.
 TILES = 13
-LIST_ROWS = 21
-LIST_COL_LEN = (7, 7, 7)
+LIST_ROWS = 19
+LIST_COL_LEN = (7, 6, 6)
 PIN_COUNT = 13
 
 # A match score is written "1.5-1.5"; the headline may name the result in
@@ -216,13 +217,14 @@ def check_imports():
 def check_news():
     items = json.load(open(NEWS, encoding="utf-8"))
     problems = []
-    if len(items) != 34:
+    if len(items) != 32:
         problems.append("count=%d" % len(items))
     ids = [i["id"] for i in items]
     if len(set(ids)) != len(ids):
         problems.append("duplicate ids")
-    # The five 25 November stories and the undated Flinders fire are gone.
-    for gone in (24, 27, 29, 32, 35):
+    # The wrongly-dated stories are gone: five 25 November stories, the
+    # undated Flinders fire, Brazil's tariffs, the DART images, Hasina.
+    for gone in (5, 21, 24, 27, 29, 32, 34, 35):
         if gone in ids:
             problems.append("dropped id %d still present" % gone)
     for it in items:
@@ -533,7 +535,7 @@ def check_nepal(items):
 
 
 def structure_problems(items, main):
-    """v2's counts: 13 tiles, 23 list rows in 7/7/7, 13 pins."""
+    """13 tiles, 19 list rows in 7/6/6, 13 pins numbered 1..13."""
     bad = []
     featured, rest = main.split_items(items)
     if len(featured) != TILES:
@@ -547,13 +549,41 @@ def structure_problems(items, main):
         bad.append("columns %s" % (main.LIST_COL_LEN,))
     if len(featured) != PIN_COUNT:
         bad.append("%d pins" % len(featured))
+    numbers = [it["number"] for it in featured] + [it["number"] for it in rest]
+    if numbers != list(range(1, len(items) + 1)):
+        bad.append("numbering %s" % numbers[:6])
     return bad
 
 
 def check_structure(items, main):
     bad = structure_problems(items, main)
-    check("13 tiles, 21 list rows in 7/7/7 and 13 pins", not bad,
+    check("13 tiles, 19 list rows in 7/6/6 and 13 pins", not bad,
           ", ".join(bad[:4]))
+
+
+def mumbai_problems(items):
+    """Tile 10 is Mumbai with an 18 YEARS stat, and Brazil is gone."""
+    bad = []
+    feat = {i["rank"]: i for i in items if i.get("featured")}
+    it = feat.get(10, {})
+    if "MUMBAI" not in it.get("headline", "").upper():
+        bad.append("tile 10 headline %r" % it.get("headline"))
+    if it.get("big_stat", "").upper() != "18 YEARS":
+        bad.append("tile 10 stat %r" % it.get("big_stat"))
+    if it.get("region") != "Asia":
+        bad.append("tile 10 region %r" % it.get("region"))
+    if not (18.5 <= it.get("lat", 0) <= 19.4
+            and 72.4 <= it.get("lon", 0) <= 73.3):
+        bad.append("tile 10 at %s,%s" % (it.get("lat"), it.get("lon")))
+    for other in items:
+        if other.get("featured") and "BRAZIL" in other["headline"].upper():
+            bad.append("Brazil still featured")
+    return bad
+
+
+def check_mumbai(items):
+    bad = mumbai_problems(items)
+    check("tile 10 is Mumbai with 18 YEARS", not bad, ", ".join(bad[:4]))
 
 
 def header_problems(log, items):
@@ -610,7 +640,16 @@ def selftest(pixels):
     }]
     caught_forbidden = bool(forbidden_problems(log, stale))
 
-    no_more = [row for row in log if row[0] != "ALSO TODAY, 21 MORE"]
+    # A resurrected Brazil tile must trip the forbidden list too.
+    revived = list(items) + [{
+        "id": 998, "featured": True, "rank": 10, "region": "Latin America",
+        "headline": "Brazil blasts new US tariff proposals",
+        "big_stat": "TARIFFS", "lat": -15.79, "lon": -47.88,
+        "date": "2026-11-26",
+    }]
+    caught_brazil = bool(forbidden_problems(log, revived))
+
+    no_more = [row for row in log if row[0] != "ALSO TODAY, 19 MORE"]
     caught_more = bool(header_problems(no_more, items))
 
     bad_chess = [dict(i) for i in items]
@@ -626,11 +665,24 @@ def selftest(pixels):
             it["big_stat"] = "213 DEAD"
     caught_nepal = bool(nepal_problems(bad_nepal))
 
-    short = list(items) + [{"id": 998, "featured": False, "rank": 0,
+    short = list(items) + [{"id": 997, "featured": False, "rank": 0,
                             "region": "Asia", "headline": "Extra row",
                             "big_stat": "", "lat": 0.0, "lon": 0.0,
                             "date": "2026-11-26"}]
     caught_structure = bool(structure_problems(short, main_mod))
+
+    # Tile 10 back to Brazil, or to Mumbai with the wrong stat, must fail.
+    bad_tile = [dict(i) for i in items]
+    for it in bad_tile:
+        if it.get("rank") == 10:
+            it["headline"] = "Brazil blasts new US tariff proposals"
+            it["big_stat"] = "TARIFFS"
+    caught_mumbai = bool(mumbai_problems(bad_tile))
+    bad_stat = [dict(i) for i in items]
+    for it in bad_stat:
+        if it.get("rank") == 10:
+            it["big_stat"] = "18 DEAD"
+    caught_mumbai = caught_mumbai and bool(mumbai_problems(bad_stat))
 
     # A string pushed past its tile edge must be rejected.
     pushed = [(t, x + 200 if t == "13 DEAD" else x, y, s, c)
@@ -644,14 +696,15 @@ def selftest(pixels):
             it["date_evidence"] = "KHARKIV, November 26 (Reuters) - drone hit"
     caught_evidence = bool(evidence_problems(bad_ev))
 
-    check("selftest: the v9 content checks bite",
-          caught_forbidden and caught_more and caught_chess
-          and caught_nepal and caught_structure and caught_fit
-          and caught_evidence,
-          "forbidden=%s more=%s chess=%s nepal=%s structure=%s fit=%s "
-          "evidence=%s"
-          % (caught_forbidden, caught_more, caught_chess, caught_nepal,
-             caught_structure, caught_fit, caught_evidence))
+    check("selftest: the content checks bite",
+          caught_forbidden and caught_brazil and caught_more and caught_chess
+          and caught_nepal and caught_structure and caught_mumbai
+          and caught_fit and caught_evidence,
+          "forbidden=%s brazil=%s more=%s chess=%s nepal=%s structure=%s "
+          "mumbai=%s fit=%s evidence=%s"
+          % (caught_forbidden, caught_brazil, caught_more, caught_chess,
+             caught_nepal, caught_structure, caught_mumbai, caught_fit,
+             caught_evidence))
 
 
 
@@ -674,6 +727,7 @@ def main():
             check_map(pixels)
             check_header(log, items)
             check_structure(items, main_mod)
+            check_mumbai(items)
             check_forbidden(log, items)
             check_chess(items)
             check_nepal(items)

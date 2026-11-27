@@ -52,7 +52,11 @@ STATUS_VALUES = ("OFFICIAL", "CONFIRMED", "REPORTED", "CLAIM", "ONGOING")
 PIN_MIN_GAP = 16
 SCENE_MIN_COLOURS = 4
 SCENE_MIN_DIFF = 0.40
-LIST_LINES = 21
+LIST_LINES = 18
+LIST_PER_COL = 6
+# The brief's v6 checks: no story that turned out to be 25 November may
+# survive anywhere on the poster, and Nepal's 213 are missing, not dead.
+FORBIDDEN_WORDS = ("NIGER", "MEASLES", "FCC", "SPACEX", "FLINDERS", "TRUMP")
 LIST_COL_W = 324
 
 HERO = (12, 64)
@@ -81,7 +85,8 @@ NUMBER_WORDS = {
 
 # Every scene is one of these; news.json names one per featured story.
 SCENES = ("ebola", "niger", "mine", "gaza", "nepal", "jets", "measles",
-          "satellites", "parade", "chess", "mumbai", "treaty", "court")
+          "satellites", "parade", "chess", "mumbai", "treaty", "court",
+          "kremlin", "summit", "servers")
 
 results = []
 
@@ -208,13 +213,15 @@ def load_news():
 def check_news():
     items = load_news()
     problems = []
-    if len(items) != 34:
+    if len(items) != 31:
         problems.append("count=%d" % len(items))
     ids = [i["id"] for i in items]
     if len(set(ids)) != len(ids):
         problems.append("duplicate ids")
-    if 21 in ids or 30 in ids:
-        problems.append("dropped id 21/30 still present")
+    # 21/30 left in v5; 24/27/29/32/35 turned out to be 25 November news.
+    for gone in (21, 30, 24, 27, 29, 32, 35):
+        if gone in ids:
+            problems.append("dropped id %d still present" % gone)
     for it in items:
         if len(it["headline"]) > 44:
             problems.append("id %d headline %d chars"
@@ -575,15 +582,224 @@ def list_problems(main, items, log):
         if abs(ty - y) > 1:
             bad.append("row %d at y=%d not %d" % (idx, ty, y))
     ys = sorted({y for _it, _t, _x, y in rows})
-    if len(ys) != 7 or any(ys[i + 1] - ys[i] != 20 for i in range(6)):
+    if len(ys) != LIST_PER_COL or any(ys[i + 1] - ys[i] != 20
+                                      for i in range(LIST_PER_COL - 1)):
         bad.append("row pitch %s" % ys)
+    cols = {}
+    for _it, _t, x, _y in rows:
+        cols[x] = cols.get(x, 0) + 1
+    if sorted(cols.values()) != [LIST_PER_COL] * 3 or len(cols) != 3:
+        bad.append("columns %s" % sorted(cols.items()))
     return bad
+
+
+def forbidden_problems(log, items, main=None):
+    """No 25 November story may survive in a tile, the list, or a pin label.
+
+    The DATE CHECK box is the one place these names belong: it is what
+    tells the reader the stories were dropped, so its text is exempt.
+    """
+    bad = []
+    shown = []
+    for text, x, y, _s, _c in log:
+        if main is not None:
+            if (main.DATE_X <= x < main.DATE_X + main.DATE_W
+                    and main.DATE_Y <= y < main.DATE_Y + main.DATE_H):
+                continue
+        shown.append(text)
+    for it in items:
+        shown.append(it["headline"])
+        shown.append(it.get("big_stat", ""))
+        shown.append(it.get("short", ""))
+        shown.append(it.get("source", ""))
+    for word in FORBIDDEN_WORDS:
+        for text in shown:
+            if word in text.upper():
+                bad.append("%s in %r" % (word, text[:22]))
+                break
+    return bad
+
+
+def check_forbidden(log, items, main):
+    bad = forbidden_problems(log, items, main)
+    check("no 25 November story left in a tile, list or pin", not bad,
+          ", ".join(bad[:4]))
+
+
+def _blobs(points, gap=2):
+    """Connected components of a pixel set, joined across up to `gap` px."""
+    left = set(points)
+    out = []
+    while left:
+        seed = left.pop()
+        blob = [seed]
+        stack = [seed]
+        while stack:
+            cx, cy = stack.pop()
+            near = [p for p in left
+                    if abs(p[0] - cx) <= gap and abs(p[1] - cy) <= gap]
+            for p in near:
+                left.discard(p)
+                blob.append(p)
+                stack.append(p)
+        out.append(blob)
+    return out
+
+
+def _bbox(points):
+    return (min(p[0] for p in points), max(p[0] for p in points),
+            min(p[1] for p in points), max(p[1] for p in points))
+
+
+def scene_element_problems(pixels, main, items):
+    """The three v6 scenes must contain the parts the brief enumerates."""
+    boxes = {label: (x, y, w, h) for label, x, y, w, h
+             in main.scene_box(items)}
+    bad = []
+    for label in ("tile 2", "tile 7", "tile 8"):
+        x, y, w, h = boxes[label]
+
+        def has(colour):
+            for yy in range(y, y + h):
+                for xx in range(x, x + w):
+                    if pixel(pixels, xx, yy) == colour:
+                        return True
+            return False
+
+        def pts(colour):
+            return [(xx - x, yy - y)
+                    for yy in range(y, y + h) for xx in range(x, x + w)
+                    if pixel(pixels, xx, yy) == colour]
+
+        if label == "tile 2":
+            # Brick wall in the bottom 14 px, three green roofs of 26/36/26,
+            # a 4 px red star on the middle tower, two grey hulls at right.
+            if not has(main.BRICK):
+                bad.append("kremlin no brick")
+            wall = [p for p in pts(main.BRICK) if p[1] < 36]
+            if wall:
+                bad.append("kremlin brick above wall")
+            roof = pts(main.ROOF)
+            if not roof:
+                bad.append("kremlin no roof")
+                continue
+            # Each roof is a separate connected triangle, so its own
+            # bounding box gives the tower height directly.
+            roofs = sorted([_bbox(b) for b in _blobs(roof) if len(b) > 30],
+                           key=lambda bb: bb[0])
+            if len(roofs) != 3:
+                bad.append("kremlin roofs %d" % len(roofs))
+            for bb, want in zip(roofs, (26, 36, 26)):
+                # Heights are measured above the 14 px wall, which starts
+                # at y 36 inside the 50 px box.
+                got = 36 - bb[2]
+                if got != want:
+                    bad.append("kremlin tower height %d not %d" % (got, want))
+            star = pts(main.RED)
+            if len(star) < 12:
+                bad.append("kremlin star %d px" % len(star))
+            elif _bbox(star)[1] - _bbox(star)[0] < 5:
+                bad.append("kremlin star too small")
+            hulls = _blobs([p for p in pts(main.SMOKE) if p[0] > 190])
+            wide = [b for b in hulls if _bbox(b)[1] - _bbox(b)[0] + 1 >= 18]
+            if len(wide) < 2:
+                bad.append("kremlin hulls %d" % len(wide))
+            elif any(_bbox(b)[1] - _bbox(b)[0] + 1 != 20
+                     or _bbox(b)[3] - _bbox(b)[2] + 1 != 6 for b in wide):
+                bad.append("kremlin hull %dx%d"
+                           % (_bbox(wide[0])[1] - _bbox(wide[0])[0] + 1,
+                              _bbox(wide[0])[3] - _bbox(wide[0])[2] + 1))
+
+        elif label == "tile 7":
+            # Cream oval ~110x24, eight white 5 px chairs, three gold r=6
+            # coins on it, a small blue flag left and right.
+            table = pts(main.CREAM)
+            if not table:
+                bad.append("summit no table")
+                continue
+            bx0, bx1, by0, by1 = _bbox(table)
+            if not (100 <= bx1 - bx0 + 1 <= 120):
+                bad.append("summit table %d wide" % (bx1 - bx0 + 1))
+            if not (20 <= by1 - by0 + 1 <= 28):
+                bad.append("summit table %d tall" % (by1 - by0 + 1))
+            chairs = [b for b in _blobs(pts((255, 255, 255)))
+                      if 12 <= len(b) <= 40]
+            if len(chairs) < 8:
+                bad.append("summit chairs %d" % len(chairs))
+            coins = [b for b in _blobs(pts(main.GOLD))
+                     if 20 <= len(b) <= 400 and abs(b[0][0] - 119) < 20]
+            # Three overlapping r=6 discs merge into one pile; a pile 5 px
+            # tall and 12 px wide is three coins, so accept either reading.
+            pile = [p for p in pts(main.GOLD) if abs(p[0] - 119) < 20]
+            if not coins or not pile:
+                bad.append("summit coins missing")
+            else:
+                px0, px1, py0, py1 = _bbox(pile)
+                if py1 - py0 + 1 < 14 or px1 - px0 + 1 < 10:
+                    bad.append("summit pile %dx%d"
+                               % (px1 - px0 + 1, py1 - py0 + 1))
+            flag = main.tint(main.WATER, 0.14)
+            left = [p for p in pts(flag) if p[0] < 60]
+            right = [p for p in pts(flag) if p[0] > 178]
+            for side, group in (("left", left), ("right", right)):
+                if not group:
+                    bad.append("summit %s flag missing" % side)
+                    continue
+                fx0, fx1, fy0, fy1 = _bbox(group)
+                if fx1 - fx0 + 1 != 14 or fy1 - fy0 + 1 != 10:
+                    bad.append("summit %s flag %dx%d"
+                               % (side, fx1 - fx0 + 1, fy1 - fy0 + 1))
+
+        else:
+            # Servers: two cream cabinets and a card, all with gold LEDs.
+            cabinets = [b for b in _blobs(pts(main.shade(main.CREAM, 0.86)))
+                        if len(b) > 400]
+            if len(cabinets) < 2:
+                bad.append("servers cabinets %d" % len(cabinets))
+            leds = [b for b in _blobs(pts(main.GOLD)) if len(b) >= 6]
+            if len(leds) < 6:
+                bad.append("servers LEDs %d" % len(leds))
+            if not has(main.INK):
+                bad.append("servers no dark slots")
+    return bad
+
+
+def check_scene_elements(pixels, main, items):
+    bad = scene_element_problems(pixels, main, items)
+    check("the three new scenes hold every part the brief lists",
+          not bad, ", ".join(bad[:4]))
+
+
+def nepal_problems(items):
+    """Nepal's 213 are missing, presumed dead: the stat must not say DEAD."""
+    bad = []
+    for it in items:
+        if not it.get("featured") or it.get("scene") != "nepal":
+            continue
+        stat = it["big_stat"].upper()
+        if stat == "213 DEAD":
+            bad.append("stat still %r" % stat)
+        if "213" not in stat or "MISSING" not in stat:
+            bad.append("stat %r" % stat)
+        if it["source"] != "PTI":
+            bad.append("source %s" % it["source"])
+        if it["status"] != "OFFICIAL":
+            bad.append("status %s" % it["status"])
+        if "213" not in it["headline"]:
+            bad.append("headline %r" % it["headline"][:24])
+    return bad
+
+
+def check_nepal(items):
+    bad = nepal_problems(items)
+    check("Nepal stat reads 213 MISSING, from PTI", not bad,
+          ", ".join(bad[:4]))
 
 
 def check_list(main, items, log):
     bad = list_problems(main, items, log)
-    check("list is %d single-line rows in three columns" % LIST_LINES,
-          not bad, ", ".join(bad[:4]))
+    check("list is %d single-line rows, %d per column"
+          % (LIST_LINES, LIST_PER_COL), not bad, ", ".join(bad[:4]))
 
 
 def header_problems(log, items):
@@ -869,15 +1085,41 @@ def selftest(pixels, main, items, log):
                {i.get("short") for i in items if not i.get("featured")}]
     caught_rows = bool(list_problems(main, items, no_rows))
 
+    # A resurrected 25 November headline and a Nepal stat back to DEAD
+    # must both be rejected.
+    stale = list(items) + [{"id": 999, "featured": True, "rank": 2,
+                            "headline": "Gunmen kill 30 in Niger state",
+                            "big_stat": "30+ DEAD", "short": "",
+                            "region": "Africa", "scene": "niger"}]
+    caught_stale = bool(forbidden_problems(log, stale, main))
+    bad_nepal = [dict(i) for i in items]
+    for it in bad_nepal:
+        if it.get("scene") == "nepal":
+            it["big_stat"] = "213 DEAD"
+    caught_nepal = bool(nepal_problems(bad_nepal))
+
+    # Flatten the new Kremlin scene: its towers and star must vanish.
+    flat_kremlin = bytearray(pixels)
+    for label, sx, sy, sw, sh in main.scene_box(items):
+        if label != "tile 2":
+            continue
+        for yy in range(sy, sy + sh):
+            for xx in range(sx, sx + sw):
+                i = (yy * 1024 + xx) * 3
+                flat_kremlin[i:i + 3] = bytes((20, 40, 60))
+    caught_elements = bool(scene_element_problems(flat_kremlin, main, items))
+
     check("selftest: every pixel and layout check bites",
           caught_white and caught_color and caught_scene and caught_text
           and caught_land and caught_legend and caught_digit and caught_frame
-          and caught_status and caught_rows,
+          and caught_status and caught_rows and caught_stale
+          and caught_elements
+          and caught_nepal,
           "white=%s colour=%s scene=%s text=%s land=%s legend=%s digit=%s "
-          "frame=%s status=%s rows=%s"
+          "frame=%s status=%s rows=%s stale=%s elements=%s"
           % (caught_white, caught_color, caught_scene, caught_text,
              caught_land, caught_legend, caught_digit, caught_frame,
-             caught_status, caught_rows))
+             caught_status, caught_rows, caught_stale, caught_elements))
 
 
 def main():
@@ -908,6 +1150,9 @@ def main():
         check_no_text_in_scenes(pixels, main_mod, items, log)
         check_status_rows(main_mod, items, log)
         check_date_box(pixels, main_mod, log)
+        check_forbidden(log, items, main_mod)
+        check_scene_elements(pixels, main_mod, items)
+        check_nepal(items)
         check_list(main_mod, items, log)
         check_pins(pixels, main_mod, items)
         check_legend(pixels, main_mod, items)

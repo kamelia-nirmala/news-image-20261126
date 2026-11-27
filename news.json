@@ -17,14 +17,16 @@
   },
   {
     "id": 2,
-    "headline": "Nvidia halts server shipments to SE Asia",
-    "short": "NVIDIA HALTS SERVERS",
+    "headline": "Nvidia halts server shipments",
     "region": "Asia",
     "category": "tech",
     "date": "2026-11-26",
     "lat": 1.35,
     "lon": 103.82,
-    "featured": false,
+    "featured": true,
+    "rank": 8,
+    "big_stat": "HALTED",
+    "scene": "servers",
     "source": "STRAITS",
     "status": "REPORTED",
     "source_url": "https://www.straitstimes.com/world/united-states/nvidia-halts-server-shipments-to-four-south-east-asian-countries-including-singapore-report"
@@ -41,11 +43,11 @@
     "rank": 11,
     "big_stat": "18 YEARS",
     "scene": "mumbai",
-    "icon": "candle",
     "source": "PTI",
     "status": "REPORTED",
     "date_evidence": "MUMBAI, November 26 (PTI) - the city paused on Thursday to remember 26/11 on its 18th anniversary",
-    "source_url": "https://theprint.in/india/mumbai-pauses-to-remember-26-11-on-18th-anniversary-as-leaders-pay-floral-tributes-to-bravehearts/3109728/"
+    "source_url": "https://theprint.in/india/mumbai-pauses-to-remember-26-11-on-18th-anniversary-as-leaders-pay-floral-tributes-to-bravehearts/3109728/",
+    "icon": "candle"
   },
   {
     "id": 4,
@@ -65,7 +67,7 @@
   },
   {
     "id": 6,
-    "headline": "Nepal moves to declare 213 dead",
+    "headline": "Nepal to declare 213 Indians dead",
     "region": "Asia",
     "category": "climate",
     "date": "2026-11-26",
@@ -73,11 +75,12 @@
     "lon": 85.32,
     "featured": true,
     "rank": 5,
-    "big_stat": "213 DEAD",
+    "big_stat": "213 MISSING",
     "scene": "nepal",
-    "source": "THEHINDU",
+    "source": "PTI",
     "status": "OFFICIAL",
-    "source_url": "https://www.thehindu.com/news/national/nepal-flash-floods-kathmandu-begins-process-to-declare-213-indians-missing-presumed-dead/article71745222.ece"
+    "date_evidence": "KATHMANDU, November 26 (PTI) - Nepal has begun the process of declaring 213 Indians missing in the August flash floods as presumed dead, out of about 5,000 people still missing; the list was announced by Nepal's disaster agency and families were asked to check it before 2 December",
+    "source_url": "https://www.siasat.com/nepal-to-declare-213-indians-missing-in-floods-presumed-dead-3587454/"
   },
   {
     "id": 8,
@@ -193,10 +196,10 @@
     "rank": 6,
     "big_stat": "5 JETS",
     "scene": "jets",
-    "icon": "jet",
     "source": "ALJAZ",
     "status": "CLAIM",
-    "source_url": "https://www.aljazeera.com/news/2026/11/26/ukraine-attacks-russian-military-base-says-five-planes-struck"
+    "source_url": "https://www.aljazeera.com/news/2026/11/26/ukraine-attacks-russian-military-base-says-five-planes-struck",
+    "icon": "jet"
   },
   {
     "id": 16,
@@ -224,10 +227,10 @@
     "rank": 12,
     "big_stat": "10 YEARS",
     "scene": "treaty",
-    "icon": "document",
     "source": "BBC",
     "status": "OFFICIAL",
-    "source_url": "https://www.bbc.co.uk/news/articles/c98r7p65edvgo"
+    "source_url": "https://www.bbc.co.uk/news/articles/c98r7p65edvgo",
+    "icon": "document"
   },
   {
     "id": 19,
@@ -285,11 +288,45 @@
     "rank": 10,
     "big_stat": "1-1",
     "scene": "chess",
-    "icon": "chess",
     "source": "CHESS",
     "status": "ONGOING",
     "date_evidence": "COLOGNY, November 26 - game three was due at 15:00 CET on Thursday with the score level at 1-1",
-    "source_url": "https://www.chess.com/news/view/2026-fide-world-chess-championship-game-3"
+    "source_url": "https://www.chess.com/news/view/2026-fide-world-chess-championship-game-3",
+    "icon": "chess"
+  },
+  {
+    "id": 45,
+    "headline": "Kremlin warns Kyiv on widening war",
+    "region": "Europe",
+    "category": "conflict",
+    "date": "2026-11-26",
+    "lat": 55.76,
+    "lon": 37.62,
+    "featured": true,
+    "rank": 2,
+    "big_stat": "WARNS",
+    "scene": "kremlin",
+    "source": "REUTERS",
+    "status": "REPORTED",
+    "date_evidence": "MOSCOW, Nov 26 (Reuters) - The Kremlin said on Thursday that Ukraine was trying to widen the war to the Mediterranean and the Baltic Sea and called it very dangerous; spokesman Dmitry Peskov said it was Kyiv, not Russia, that was expanding the conflict zone, while Libya and Italy condemned a Ukrainian attack on a Russian ship in Libyan waters and Norway urged caution in the Baltic",
+    "source_url": "https://www.yahoo.com/news/world/articles/kremlin-accuses-ukraine-trying-widen-102221905.html"
+  },
+  {
+    "id": 46,
+    "headline": "EU leaders wrestle over 1.58T budget",
+    "region": "Europe",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 50.85,
+    "lon": 4.35,
+    "featured": true,
+    "rank": 7,
+    "big_stat": "1.58T",
+    "scene": "summit",
+    "source": "REUTERS",
+    "status": "REPORTED",
+    "date_evidence": "BRUSSELS, Nov 26 (Reuters) - EU leaders at a Thursday summit wrestled over the 2028-2034 budget worth 1.582 trillion euros and over Ukraine financing including a 45 billion euro loan; Slovakia, Czechia, Hungary and Bulgaria refused to shoulder the loan; a deal is targeted for 17 and 18 December",
+    "source_url": "https://theprint.in/world/leaders-wrestle-over-eus-budget-ukraine-financing-as-le-pen-focuses-minds/3109796/"
   },
   {
     "id": 20,
@@ -317,10 +354,10 @@
     "rank": 1,
     "big_stat": "12,000",
     "scene": "ebola",
-    "icon": "virus",
     "source": "ALJAZ",
     "status": "REPORTED",
-    "source_url": "https://www.aljazeera.com/news/2026/11/26/dr-congo-ebola-cases-surpass-12000-as-fighting-disrupts-response-in-east"
+    "source_url": "https://www.aljazeera.com/news/2026/11/26/dr-congo-ebola-cases-surpass-12000-as-fighting-disrupts-response-in-east",
+    "icon": "virus"
   },
   {
     "id": 23,
@@ -337,22 +374,6 @@
     "source_url": "https://www.straitstimes.com/world/kenya-breached-constitution-in-building-us-backed-ebola-quarantine-site-court-says"
   },
   {
-    "id": 24,
-    "headline": "Gunmen kill 30 in Niger state",
-    "region": "Africa",
-    "category": "conflict",
-    "date": "2026-11-26",
-    "lat": 9.88,
-    "lon": 4.51,
-    "featured": true,
-    "rank": 2,
-    "big_stat": "30+ DEAD",
-    "scene": "niger",
-    "source": "STRAITS",
-    "status": "REPORTED",
-    "source_url": "https://www.straitstimes.com/world/suspected-militants-kill-at-least-30-in-nigerias-niger-state-residents-say"
-  },
-  {
     "id": 26,
     "headline": "War and drought squeeze Sudan's farmers",
     "short": "SUDAN FARMERS SQUEEZED",
@@ -367,20 +388,6 @@
     "source_url": "https://www.aljazeera.com/features/2026/11/26/war-and-drought-threaten-livelihoods-of-sudans-farmers"
   },
   {
-    "id": 27,
-    "headline": "Trump and NATO chief warn Russia on war",
-    "short": "TRUMP NATO WARN RUSSIA",
-    "region": "North America",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 26.7,
-    "lon": -80.05,
-    "featured": false,
-    "source": "STRAITS",
-    "status": "REPORTED",
-    "source_url": "https://www.straitstimes.com/world/united-states/trump-and-nato-chief-urge-russia-to-avoid-actions-that-widen-ukraine-war"
-  },
-  {
     "id": 43,
     "headline": "Macy's 100th parade moved to Sat",
     "region": "North America",
@@ -392,27 +399,11 @@
     "rank": 9,
     "big_stat": "100TH",
     "scene": "parade",
-    "icon": "balloon",
     "source": "TRIBUNE",
     "status": "REPORTED",
     "date_evidence": "NEW YORK, November 26 - the 100th parade, due on Thursday, was pushed to Saturday 28 November by a nor'easter",
-    "source_url": "https://tribune.com.pk/story/2642458/macys-thanksgiving-day-parade-postponed-for-the-first-time-in-100-years-due-to-noreaster"
-  },
-  {
-    "id": 29,
-    "headline": "US measles deaths reach nine in 2026",
-    "region": "North America",
-    "category": "health",
-    "date": "2026-11-26",
-    "lat": 33.75,
-    "lon": -84.39,
-    "featured": true,
-    "rank": 7,
-    "big_stat": "9 DEAD",
-    "scene": "measles",
-    "source": "STRAITS",
-    "status": "OFFICIAL",
-    "source_url": "https://www.straitstimes.com/world/united-states/us-cdc-reports-nine-measles-related-deaths-in-2026"
+    "source_url": "https://tribune.com.pk/story/2642458/macys-thanksgiving-day-parade-postponed-for-the-first-time-in-100-years-due-to-noreaster",
+    "icon": "balloon"
   },
   {
     "id": 31,
@@ -427,22 +418,6 @@
     "source": "BBC",
     "status": "REPORTED",
     "source_url": "https://www.bbc.co.uk/news/articles/ckm2mz3prq77o"
-  },
-  {
-    "id": 32,
-    "headline": "FCC clears SpaceX for 1M satellites",
-    "region": "North America",
-    "category": "science",
-    "date": "2026-11-26",
-    "lat": 38.9,
-    "lon": -77.03,
-    "featured": true,
-    "rank": 8,
-    "big_stat": "1M SATS",
-    "scene": "satellites",
-    "source": "NPR",
-    "status": "OFFICIAL",
-    "source_url": "https://www.npr.org/2026/11/26/g-s1-155940/fcc-spacex-satellites-data-centers-in-space"
   },
   {
     "id": 33,
@@ -486,20 +461,6 @@
     "status": "ONGOING",
     "date_evidence": "BUENOS AIRES, November 26 (Reuters) - the Senate was due on Thursday to weigh a bill suspending primary elections",
     "source_url": "https://theprint.in/world/argentinas-senate-poised-to-suspend-primaries-boosting-mileis-re-election-bid/3109769/"
-  },
-  {
-    "id": 35,
-    "headline": "Flinders Island fire destroys homes",
-    "short": "FLINDERS FIRE HOMES",
-    "region": "Oceania",
-    "category": "climate",
-    "date": "2026-11-26",
-    "lat": -40.0,
-    "lon": 148.0,
-    "featured": false,
-    "source": "GUARDIAN",
-    "status": "REPORTED",
-    "source_url": "https://www.theguardian.com/australia-news/2026/nov/25/large-bushfire-threatens-homes-and-properties-on-remote-island-off-tasmania"
   },
   {
     "id": 36,

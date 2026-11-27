@@ -32,6 +32,14 @@ LAND = (0x3A, 0x55, 0x78)
 COAST = (0x7C, 0x9C, 0xC4)
 BADGE_INK = (0x0B, 0x12, 0x20)
 
+CREAM = (0xF2, 0xEA, 0xD8)
+GOLD = (0xFF, 0xD2, 0x3F)
+INK = (0x10, 0x16, 0x22)
+SMOKE = (0xB9, 0xC2, 0xCE)
+WATER = (0x35, 0x6E, 0xA8)
+SAND = (0xD8, 0xB4, 0x6E)
+RED = (0xE8, 0x3B, 0x3B)
+
 REGION_ORDER = [
     "North America",
     "Latin America",
@@ -54,19 +62,66 @@ REGION_COLOR = {
     "Global": (0x5A, 0x6B, 0x7B),
 }
 
-HERO_X, HERO_Y, HERO_W, HERO_H = 12, 64, 500, 204
-TILE_XS = (12, 263, 514, 765)
-TILE_YS = (276, 410, 544)
-TILE_W, TILE_H = 246, 128
+STATUS_COLOR = {
+    "OFFICIAL": (0x7C, 0xC4, 0xFF),
+    "CONFIRMED": (0x59, 0xD6, 0x8F),
+    "REPORTED": (0xC9, 0xD6, 0xE6),
+    "CLAIM": (0xFF, 0xB4, 0x4D),
+    "ONGOING": (0x5F, 0xE0, 0xE8),
+}
 
-PANEL_X, PANEL_Y, PANEL_W, PANEL_H = 524, 64, 488, 204
-MAP_X0, MAP_Y0, MAP_X1, MAP_Y1 = 532, 88, 1004, 262
+STATUSES = ("OFFICIAL", "CONFIRMED", "REPORTED", "CLAIM", "ONGOING")
+
+# Every draw_text call is appended here when --text-log is passed, so
+# check.py can assert on the exact strings and their boxes without
+# guessing glyph shapes from pixels.
+TEXT_LOG = None
+
+# Set False by render(text=False) so a check can compare a poster with no
+# lettering against the real one, pixel for pixel.
+DRAW_TEXT = True
+
+MARGIN = 12
+HERO_X, HERO_Y, HERO_W, HERO_H = 12, 64, 500, 150
+MAP_X, MAP_Y, MAP_W, MAP_H = 524, 64, 488, 150
+
+# Four 245 px columns at a 251 px pitch: 12 + 4*245 + 3*6 = 1010, which
+# keeps the 6 px gutter and the 12 px right margin.  The brief's 250 px
+# columns at 12/268/524/780 would end at 1030, off the 1024 canvas, so
+# the tile is 5 px narrower and the 238 px illustration box still fits
+# at +6 with a 1 px right pad.
+TILE_XS = (12, 263, 514, 765)
+TILE_YS = (220, 382, 544)
+TILE_W, TILE_H = 245, 156
+
+SCENE_X, SCENE_Y, SCENE_W, SCENE_H = 6, 22, 238, 50
+HERO_SCENE_X, HERO_SCENE_Y = 316, 24
+HERO_SCENE_W, HERO_SCENE_H = 178, 88
+GROUND_H = 12
+
+MAP_X0, MAP_Y0, MAP_X1, MAP_Y1 = 532, 86, 1004, 208
 MAP_LAT_TOP, MAP_LAT_BOT = 75.0, -58.0
 
-LIST_XS = (12, 348, 684)
-LIST_Y0 = 704
-LIST_PITCH = 40
-LIST_COL_LEN = (8, 8, 7)
+LIST_XS = (12, 346, 680)
+LIST_Y0 = 726
+LIST_PITCH = 20
+LIST_ROWS = 7
+LIST_COL_W = 324
+
+DATE_X, DATE_Y, DATE_W, DATE_H = 12, 872, 1000, 146
+DATE_ITEMS = (
+    "HORMUZ TANKER HITS MINE: 24-25 NOV",
+    "HOUTHI CLAIM ON RAS TANURA: 25 NOV",
+    "KYIV BALLISTIC STRIKE: NIGHT OF 25 NOV",
+    "UN EBOLA EVACUATION: 24-25 NOV",
+    "US BIRTHRIGHT SECOND JUDGE: 24-25 NOV",
+    "APPLE / MINIMAX: 24-25 NOV",
+)
+DATE_TITLE = "DATE CHECK: EVERY STORY IS FROM 26 NOV. LEFT OUT (NOT 26 NOV):"
+DATE_LEGEND = (
+    "OFFICIAL GOV OR INSTITUTION | CONFIRMED 2+ SOURCES",
+    "REPORTED 1 OUTLET | CLAIM ONE SIDE | ONGOING STILL UNFOLDING",
+)
 
 # Region names are too wide for a 246 px tile at the 14 px minimum type
 # size, so tiles use these short forms; the hero has room for the full name.
@@ -90,29 +145,6 @@ REGION_ABBR = {
     "Asia": "AS",
     "Oceania": "OC",
     "Global": "GL",
-}
-
-# Icon plates sit inside the hero and every tile.  The stat and region
-# label stop short of the plate, so no text can land on the pictogram.
-ICON_INSET = 8
-ICON_HERO = 120
-ICON_TILE = 56
-HERO_ICON_X = HERO_X + HERO_W - ICON_INSET - ICON_HERO
-HERO_ICON_Y = HERO_Y + ICON_INSET
-HERO_STAT_W = HERO_ICON_X - 24 - 8
-# A tile stat sits in the column left of the icon plate and may not run
-# under it, so its width stops 8 px short of the plate.
-TILE_STAT_W = TILE_W - ICON_INSET - ICON_TILE - 8 - 8
-
-DEFAULT_ICON = {
-    "climate": "waves",
-    "conflict": "burst",
-    "economy": "chart",
-    "health": "cross",
-    "politics": "flag",
-    "science": "satellite",
-    "sport": "chess",
-    "tech": "satellite",
 }
 
 # 5x7 bitmap font.  Each glyph is seven rows; each row is five bits, the
@@ -174,6 +206,7 @@ FONT = {
     "#": (10, 10, 31, 10, 31, 10, 10),
 }
 
+
 def new_canvas():
     buf = bytearray(W * H * 3)
     r, g, b = BG
@@ -207,11 +240,11 @@ def fill_rect(buf, x, y, w, h, color):
         buf[i:i + len(run)] = run
 
 
-def stroke_rect(buf, x, y, w, h, color):
-    fill_rect(buf, x, y, w, 1, color)
-    fill_rect(buf, x, y + h - 1, w, 1, color)
-    fill_rect(buf, x, y, 1, h, color)
-    fill_rect(buf, x + w - 1, y, 1, h, color)
+def stroke_rect(buf, x, y, w, h, color, thick=1):
+    fill_rect(buf, x, y, w, thick, color)
+    fill_rect(buf, x, y + h - thick, w, thick, color)
+    fill_rect(buf, x, y, thick, h, color)
+    fill_rect(buf, x + w - thick, y, thick, h, color)
 
 
 def fill_circle(buf, cx, cy, radius, color):
@@ -226,8 +259,8 @@ def fill_poly(buf, points, color, clip=None):
     if len(points) < 3:
         return
     ys = [p[1] for p in points]
-    ytop = max(0, min(ys))
-    ybot = min(H - 1, max(ys))
+    ytop = max(0, int(min(ys)))
+    ybot = min(H - 1, int(max(ys)))
     if clip is not None:
         cx0, cy0, cx1, cy1 = clip
         ytop = max(ytop, cy0)
@@ -280,6 +313,10 @@ def text_width(s, scale):
 
 def draw_text(buf, x, y, s, scale, color):
     """Draw upper-cased bitmap text; returns the advance width."""
+    if TEXT_LOG is not None:
+        TEXT_LOG.append((s, x, y, scale, color))
+    if not DRAW_TEXT:
+        return text_width(s, scale)
     cx = x
     for ch in s.upper():
         glyph = FONT.get(ch)
@@ -339,159 +376,333 @@ def tint(color, f):
     return tuple(int(v + (255 - v) * f) for v in color)
 
 
-def stroke_circle(buf, cx, cy, r, thick, color, bg):
-    fill_circle(buf, cx, cy, r, color)
-    if r - thick >= 1:
-        fill_circle(buf, cx, cy, r - thick, bg)
+# Twelve unit vectors 30 degrees apart, enough for radial shapes without
+# importing math.
+RING12 = (
+    (1.0, 0.0), (0.866, 0.5), (0.5, 0.866), (0.0, 1.0),
+    (-0.5, 0.866), (-0.866, 0.5), (-1.0, 0.0), (-0.866, -0.5),
+    (-0.5, -0.866), (0.0, -1.0), (0.5, -0.866), (0.866, -0.5),
+)
 
+RING8 = (
+    (1.0, 0.0), (0.707, 0.707), (0.0, 1.0), (-0.707, 0.707),
+    (-1.0, 0.0), (-0.707, -0.707), (0.0, -1.0), (0.707, -0.707),
+)
 
-# Eight unit vectors, enough for radial shapes without importing math.
-DIRS8 = ((1.0, 0.0), (0.707, 0.707), (0.0, 1.0), (-0.707, 0.707),
-         (-1.0, 0.0), (-0.707, -0.707), (0.0, -1.0), (0.707, -0.707))
+class Scene(object):
+    """A small illustrated box: sky bands, ground strip and shapes.
 
-ICON_KINDS = ("virus", "burst", "waves", "mountain", "jet", "cross",
-              "satellite", "balloon", "chess", "candle", "document", "flag")
+    Positions are fractions of the box (0..1 on each axis) and radii and
+    stroke widths are in pixels, so circles stay round and the same scene
+    reads at 238x50 and at 178x88.
+    """
 
+    def __init__(self, buf, x, y, w, h, region_color):
+        self.buf = buf
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.clip = (x, y, x + w - 1, y + h - 1)
+        self.top = shade(region_color, 0.50)
+        self.low = shade(region_color, 0.62)
+        self.ground = shade(region_color, 0.88)
+        self.cream = CREAM
+        self.gold = GOLD
+        self.ink = INK
+        fill_rect(buf, x, y, w, h, self.top)
+        split = y + int(h * 0.45)
+        fill_rect(buf, x, split, w, y + h - split, self.low)
+        self.repaint_ground(self.ground)
+        # Everything in a scene stands on the ground strip, so scenes use
+        # this instead of 1.0 for their bottom edge.
+        self.base = 1.0 - float(GROUND_H) / h
 
-def draw_icon(buf, x, y, size, kind, ink, accent, plate):
-    """Pictogram on a 16x16 grid, drawn from rectangles, polygons and discs."""
-    s = size / 16.0
+    def repaint_ground(self, color):
+        fill_rect(self.buf, self.x, self.y + self.h - GROUND_H,
+                  self.w, GROUND_H, color)
 
-    def gx(v):
-        return int(x + v * s + 0.5)
+    def X(self, u):
+        return self.x + int(u * self.w + 0.5)
 
-    def gy(v):
-        return int(y + v * s + 0.5)
+    def Y(self, v):
+        return self.y + int(v * self.h + 0.5)
 
-    def rect(a, b, w, h, col):
-        fill_rect(buf, gx(a), gy(b), max(1, int(w * s + 0.5)),
-                  max(1, int(h * s + 0.5)), col)
+    def box(self, x, y, w, h, color):
+        x0 = max(self.x, x)
+        y0 = max(self.y, y)
+        x1 = min(self.x + self.w, x + w)
+        y1 = min(self.y + self.h, y + h)
+        if x1 > x0 and y1 > y0:
+            fill_rect(self.buf, x0, y0, x1 - x0, y1 - y0, color)
 
-    def disc(a, b, r, col):
-        fill_circle(buf, gx(a), gy(b), max(1, int(r * s + 0.5)), col)
+    def rect(self, u0, v0, u1, v1, color):
+        x0, x1 = self.X(u0), self.X(u1)
+        y0, y1 = self.Y(v0), self.Y(v1)
+        self.box(x0, y0, x1 - x0, y1 - y0, color)
 
-    def poly(pts, col):
-        fill_poly(buf, [(gx(a), gy(b)) for a, b in pts], col)
+    def disc(self, u, v, rpx, color):
+        cx, cy = self.X(u), self.Y(v)
+        r = max(1, int(rpx + 0.5))
+        for dy in range(-r, r + 1):
+            yy = cy + dy
+            if yy < self.y or yy >= self.y + self.h:
+                continue
+            span = int((r * r - dy * dy) ** 0.5)
+            x0 = max(self.x, cx - span)
+            x1 = min(self.x + self.w - 1, cx + span)
+            if x1 >= x0:
+                fill_rect(self.buf, x0, yy, x1 - x0 + 1, 1, color)
 
-    def line(a, b, c, d, w, col):
-        x0, y0, x1, y1 = gx(a), gy(b), gx(c), gy(d)
+    def poly(self, pts, color):
+        fill_poly(self.buf, [(self.X(a), self.Y(b)) for a, b in pts],
+                  color, self.clip)
+
+    def seg(self, x0, y0, x1, y1, wpx, color):
         n = max(abs(x1 - x0), abs(y1 - y0), 1)
-        w = max(2, int(w * s + 0.5))
+        w = max(1, int(wpx + 0.5))
+        half = w // 2
         for i in range(n + 1):
-            fill_rect(buf, x0 + (x1 - x0) * i // n - w // 2,
-                      y0 + (y1 - y0) * i // n - w // 2, w, w, col)
+            x = x0 + (x1 - x0) * i // n
+            y = y0 + (y1 - y0) * i // n
+            self.box(x - half, y - half, w, w, color)
 
-    if kind == "virus":
-        for dx, dy in DIRS8:
-            line(8 + dx * 3.6, 8 + dy * 3.6, 8 + dx * 6.4,
-                 8 + dy * 6.4, 1.1, ink)
-        stroke_circle(buf, gx(8), gy(8), max(2, int(4.4 * s + 0.5)),
-                      max(2, int(1.5 * s + 0.5)), ink, plate)
-        for a, b in ((6.4, 6.8), (9.6, 7.2), (8.0, 9.6)):
-            disc(a, b, 0.85, accent)
-    elif kind == "burst":
+    def line(self, u0, v0, u1, v1, wpx, color):
+        self.seg(self.X(u0), self.Y(v0), self.X(u1), self.Y(v1), wpx, color)
+
+    def ray(self, u, v, dx, dy, r0, r1, wpx, color):
+        cx, cy = self.X(u), self.Y(v)
+        self.seg(int(cx + dx * r0), int(cy + dy * r0),
+                 int(cx + dx * r1), int(cy + dy * r1), wpx, color)
+
+    def ring(self, u, v, rpx, color, dot=1.0):
+        for dx, dy in RING12:
+            self.disc(u + dx * rpx / self.w, v + dy * rpx / self.h,
+                      dot, color)
+
+    def star(self, u, v, rpx, color):
+        cx, cy = self.X(u), self.Y(v)
         pts = []
-        for i, (dx, dy) in enumerate(DIRS8):
-            r = 7.0 if i % 2 == 0 else 2.9
-            pts.append((8 + dx * r, 8 + dy * r))
-        poly(pts, accent)
-        poly([(8, 3.2), (9.6, 8), (8, 12.8), (6.4, 8)], ink)
-    elif kind == "waves":
-        # Three filled sine bands: a polygon between the crest line and a
-        # parallel line below it, so the water reads as continuous.
-        cycle = (0.0, -0.7, -1.4, -0.7, 0.0, 0.7, 1.4, 0.7)
-        for base, col in ((2.6, ink), (7.4, accent), (12.2, ink)):
-            top = [(float(i), base + cycle[i % 8]) for i in range(16)]
-            bottom = [(float(i), base + 1.8 + cycle[i % 8])
-                      for i in range(15, -1, -1)]
-            poly(top + bottom, col)
-    elif kind == "mountain":
-        poly([(0.8, 14.2), (6.2, 3.6), (9.4, 10.0), (11.4, 6.4),
-              (15.2, 14.2)], ink)
-        poly([(4.6, 6.8), (6.2, 3.6), (7.8, 6.8)], accent)
-        poly([(10.6, 8.4), (11.4, 6.4), (12.3, 8.4)], accent)
-    elif kind == "jet":
-        poly([(8.0, 0.8), (9.4, 5.6), (14.2, 8.8), (14.2, 10.8),
-              (9.4, 9.4), (9.0, 12.6), (10.8, 14.2), (10.8, 15.2),
-              (8.0, 14.6), (5.2, 15.2), (5.2, 14.2), (7.0, 12.6),
-              (6.6, 9.4), (1.8, 10.8), (1.8, 8.8), (6.6, 5.6)], ink)
-        rect(7.4, 4.0, 1.2, 3.0, accent)
-    elif kind == "cross":
-        rect(6.0, 1.6, 4.0, 12.8, ink)
-        rect(1.6, 6.0, 12.8, 4.0, ink)
-        rect(6.9, 2.6, 2.2, 4.4, accent)
-    elif kind == "satellite":
-        rect(1.0, 6.6, 4.2, 2.8, accent)
-        rect(10.8, 6.6, 4.2, 2.8, accent)
-        rect(6.2, 6.2, 3.6, 3.6, ink)
-        line(5.2, 8.0, 6.2, 8.0, 0.8, ink)
-        line(9.8, 8.0, 10.8, 8.0, 0.8, ink)
-        disc(11.6, 3.6, 1.7, ink)
-        line(11.6, 3.6, 8.6, 6.2, 0.8, ink)
-        rect(7.2, 12.6, 1.6, 2.2, ink)
-    elif kind == "balloon":
-        for a, b in ((4.6, 4.4), (8.4, 3.2), (11.8, 5.2)):
-            disc(a, b, 2.1, accent)
-        line(4.6, 6.5, 7.6, 10.4, 0.7, ink)
-        line(8.4, 5.3, 8.0, 10.4, 0.7, ink)
-        line(11.8, 7.3, 8.8, 10.4, 0.7, ink)
-        rect(7.0, 10.6, 3.2, 2.6, ink)
-        rect(7.9, 9.8, 1.4, 1.0, ink)
-    elif kind == "chess":
-        cell = 1.45
-        for j in range(8):
-            for i in range(8):
-                if (i + j) % 2:
-                    rect(0.8 + i * cell, 0.8 + j * cell, cell, cell, accent)
-        # A white queen on the right half of the board, foot on the last rank.
-        poly([(9.8, 14.6), (13.2, 14.6), (12.6, 11.9), (10.4, 11.9)], ink)
-        rect(10.6, 10.6, 2.8, 1.5, ink)
-        disc(12.0, 9.6, 1.3, ink)
-        rect(11.4, 7.6, 1.2, 1.4, ink)
-        rect(10.5, 6.9, 0.9, 0.9, ink)
-        rect(11.6, 6.6, 0.9, 1.0, ink)
-        rect(12.6, 6.9, 0.9, 0.9, ink)
-    elif kind == "candle":
-        rect(6.4, 6.4, 3.2, 8.0, ink)
-        rect(7.6, 4.8, 0.9, 1.8, ink)
-        poly([(8.0, 0.8), (9.3, 3.0), (8.0, 4.6), (6.7, 3.0)], accent)
-        rect(4.2, 14.2, 7.6, 1.4, ink)
-        rect(6.9, 7.4, 1.0, 1.2, accent)
-    elif kind == "document":
-        rect(4.2, 1.4, 7.6, 13.2, ink)
-        poly([(9.6, 1.4), (11.8, 3.6), (9.6, 3.6)], plate)
-        for b in (5.6, 7.6, 9.6):
-            rect(5.6, b, 4.8, 1.0, accent)
-        rect(5.6, 11.8, 2.8, 1.0, accent)
-    elif kind == "flag":
-        rect(3.6, 1.2, 1.3, 12.6, ink)
-        poly([(4.9, 1.6), (13.4, 3.0), (11.2, 5.2), (13.4, 7.4),
-              (4.9, 8.6)], accent)
-        rect(2.2, 13.8, 5.4, 1.2, ink)
-    else:
-        rect(4.0, 4.0, 8.0, 8.0, ink)
+        for i, (dx, dy) in enumerate(RING8):
+            r = rpx if i % 2 == 0 else rpx * 0.42
+            pts.append((cx + dx * r, cy + dy * r))
+        fill_poly(self.buf, pts, color, self.clip)
 
 
-def icon_for(it):
-    return it.get("icon") or DEFAULT_ICON.get(it["category"], "flag")
+def scene_ebola(sc):
+    """Virus with twelve spikes, three inner dots, floating circles, cross."""
+    r = min(sc.h * 0.30, sc.w * 0.13)
+    cx, cy = 0.20, 0.44
+    for dx, dy in RING12:
+        sc.ray(cx, cy, dx, dy, r * 0.80, r * 1.44,
+               max(2, int(sc.h * 0.055)), CREAM)
+    sc.disc(cx, cy, r, CREAM)
+    sc.disc(cx, cy, r * 0.62, shade(CREAM, 0.90))
+    for ox, oy in ((-0.34, -0.30), (0.30, -0.14), (-0.04, 0.38)):
+        sc.disc(cx + ox * r / sc.w, cy + oy * r / sc.h,
+                max(1, r * 0.17), INK)
+    for u, v in ((0.44, 0.16), (0.49, 0.74), (0.56, 0.44)):
+        sc.disc(u, v, max(1, sc.h * 0.07), CREAM)
+    arm = sc.h * 0.32
+    thick = max(3, int(sc.h * 0.10))
+    sc.box(sc.X(0.80) - thick // 2, int(sc.Y(0.44) - arm),
+           thick, int(arm * 2), GOLD)
+    sc.box(int(sc.X(0.80) - arm), sc.Y(0.44) - thick // 2,
+           int(arm * 2), thick, GOLD)
 
 
-def icon_box(it, x, y):
-    """Plate rectangle (x, y, w, h) for a hero or tile item."""
-    if it["featured"] and it["rank"] == 1:
-        return (HERO_ICON_X, HERO_ICON_Y, ICON_HERO, ICON_HERO)
-    return (x + TILE_W - ICON_INSET - ICON_TILE, y + ICON_INSET,
-            ICON_TILE, ICON_TILE)
+def scene_niger(sc):
+    """Sand dunes, three huts with smoke, a low sun."""
+    sc.disc(0.87, 0.18, sc.h * 0.15, GOLD)
+    sc.poly([(0.0, sc.base), (0.24, 0.70), (0.52, sc.base)], SAND)
+    sc.poly([(0.42, sc.base), (0.68, 0.62), (0.98, sc.base)],
+            shade(SAND, 0.86))
+    for u in (0.06, 0.24, 0.42):
+        sc.rect(u, 0.48, u + 0.11, sc.base, CREAM)
+        sc.poly([(u - 0.02, 0.50), (u + 0.055, 0.32), (u + 0.13, 0.50)],
+                CREAM)
+        sc.rect(u + 0.04, 0.66, u + 0.07, sc.base, INK)
+    for u, v, r in ((0.60, 0.34, 0.08), (0.64, 0.22, 0.06),
+                    (0.68, 0.11, 0.04)):
+        sc.disc(u, v, sc.h * r, SMOKE)
 
 
-def draw_icon_plate(buf, it, x, y):
-    color = REGION_COLOR[it["region"]]
-    plate = shade(color, 0.42)
-    accent = tint(color, 0.74)
-    bx, by, bw, bh = icon_box(it, x, y)
-    fill_rect(buf, bx, by, bw, bh, plate)
-    stroke_rect(buf, bx, by, bw, bh, accent)
-    draw_icon(buf, bx, by, bw, icon_for(it), WHITE, accent, plate)
+def scene_mine(sc):
+    """Mountain, dark mine adit, blue water with zigzag waves, helmet."""
+    sc.poly([(0.0, 0.92), (0.28, 0.10), (0.56, 0.92)], CREAM)
+    sc.poly([(0.42, 0.92), (0.60, 0.42), (0.78, 0.92)], shade(CREAM, 0.82))
+    sc.rect(0.20, 0.56, 0.33, 0.84, INK)
+    sc.disc(0.265, 0.56, sc.w * 0.065, INK)
+    sc.rect(0.0, 0.80, 1.0, 0.88, WATER)
+    for u in (0.02, 0.30, 0.58):
+        sc.line(u, 0.855, u + 0.08, 0.815, 2, CREAM)
+        sc.line(u + 0.08, 0.815, u + 0.16, 0.855, 2, CREAM)
+    sc.disc(0.80, 0.66, sc.h * 0.15, GOLD)
+    sc.rect(0.745, 0.66, 0.855, 0.86, GOLD)
+    sc.rect(0.79, 0.68, 0.81, 0.84, INK)
+
+
+def scene_gaza(sc):
+    """Five windowed buildings, rising smoke, an explosion star."""
+    for u, wd, ht in ((0.02, 0.13, 0.50), (0.17, 0.11, 0.66),
+                      (0.30, 0.14, 0.40), (0.46, 0.12, 0.56),
+                      (0.60, 0.13, 0.34)):
+        sc.rect(u, sc.base - ht, u + wd, sc.base, CREAM)
+        for i in range(3):
+            for j in range(2):
+                sc.rect(u + 0.018 + i * 0.036,
+                        sc.base - ht + 0.06 + j * 0.14,
+                        u + 0.046 + i * 0.036,
+                        sc.base - ht + 0.11 + j * 0.14, INK)
+    sc.star(0.80, 0.22, sc.h * 0.22, GOLD)
+    for u, v, r in ((0.40, 0.28, 0.10), (0.46, 0.16, 0.075),
+                    (0.52, 0.06, 0.05)):
+        sc.disc(u, v, sc.h * r, SMOKE)
+
+
+def scene_nepal(sc):
+    """Three snow-capped peaks, a brown river, a landslide scar."""
+    for u, top in ((0.0, 0.20), (0.28, 0.08), (0.56, 0.26)):
+        sc.poly([(u, sc.base), (u + 0.17, top), (u + 0.36, sc.base)],
+                CREAM)
+        sc.poly([(u + 0.10, top + 0.11), (u + 0.17, top),
+                 (u + 0.24, top + 0.11)], WHITE)
+    sc.poly([(0.0, 0.94), (0.35, 0.82), (0.70, 0.90), (1.0, 0.84),
+             (1.0, sc.base), (0.0, sc.base)], shade(WATER, 0.80))
+    sc.poly([(0.60, sc.base), (0.76, 0.40), (0.90, sc.base)], GOLD)
+    sc.line(0.68, 0.78, 0.85, 0.88, 2, CREAM)
+
+
+def scene_jets(sc):
+    """A grey runway, three jets seen from above, one trailing smoke."""
+    sc.repaint_ground(shade(SMOKE, 0.55))
+    for i in range(4):
+        sc.rect(0.0, 0.86 + i * 0.022, 1.0, 0.868 + i * 0.022, CREAM)
+    for u, v, smoke in ((0.18, 0.32, False), (0.50, 0.62, True),
+                        (0.80, 0.28, False)):
+        sc.poly([(u, v - 0.20), (u + 0.025, v - 0.04),
+                 (u + 0.13, v + 0.03), (u + 0.025, v + 0.06),
+                 (u + 0.018, v + 0.18), (u - 0.018, v + 0.18),
+                 (u - 0.025, v + 0.06), (u - 0.13, v + 0.03),
+                 (u - 0.025, v - 0.04)], CREAM)
+        sc.rect(u - 0.008, v - 0.15, u + 0.008, v - 0.02, GOLD)
+        if smoke:
+            for j in range(3):
+                sc.disc(u + 0.11 + j * 0.06, v - 0.14 - j * 0.07,
+                        sc.h * (0.07 - j * 0.014), SMOKE)
+
+
+def scene_measles(sc):
+    """A horizontal syringe and nine small virus circles above it."""
+    sc.rect(0.02, 0.58, 0.40, 0.70, CREAM)
+    sc.rect(0.0, 0.54, 0.04, 0.74, CREAM)
+    sc.rect(0.40, 0.61, 0.54, 0.67, CREAM)
+    sc.rect(0.54, 0.63, 0.68, 0.65, SMOKE)
+    sc.rect(0.06, 0.42, 0.11, 0.86, GOLD)
+    sc.rect(0.21, 0.50, 0.26, 0.78, GOLD)
+    for i in range(9):
+        u = 0.72 + (i % 3) * 0.095
+        v = 0.10 + (i // 3) * 0.20
+        sc.disc(u, v, max(1, sc.h * 0.07), GOLD)
+
+
+def scene_satellites(sc):
+    """Stars, the blue arc of Earth, five paneled satellites."""
+    for u, v in ((0.06, 0.10), (0.20, 0.28), (0.38, 0.08), (0.56, 0.24),
+                 (0.72, 0.10), (0.90, 0.28), (0.66, 0.42), (0.14, 0.42)):
+        sc.disc(u, v, 1.4, WHITE)
+    sc.disc(0.92, 1.06, sc.h * 0.50, WATER)
+    sc.disc(0.92, 1.06, sc.h * 0.42, tint(WATER, 0.26))
+    for u, v in ((0.24, 0.62), (0.48, 0.72), (0.70, 0.60), (0.40, 0.36),
+                 (0.60, 0.20)):
+        sc.rect(u - 0.055, v - 0.025, u - 0.012, v + 0.025, GOLD)
+        sc.rect(u + 0.012, v - 0.025, u + 0.055, v + 0.025, GOLD)
+        sc.rect(u - 0.010, v - 0.035, u + 0.010, v + 0.035, CREAM)
+
+
+def scene_parade(sc):
+    """Three tethered balloons, a building silhouette, slanting rain."""
+    sc.rect(0.02, 0.10, 0.22, 0.24, CREAM)
+    sc.disc(0.12, 0.17, sc.h * 0.10, CREAM)
+    sc.disc(0.19, 0.17, sc.h * 0.07, shade(CREAM, 0.94))
+    for u, wd, ht in ((0.0, 0.12, 0.42), (0.11, 0.10, 0.58),
+                      (0.21, 0.13, 0.34), (0.34, 0.09, 0.50),
+                      (0.43, 0.12, 0.28)):
+        sc.rect(u, 0.92 - ht, u + wd, 0.92, shade(sc.top, 0.45))
+    for i in range(7):
+        sc.line(0.02 + i * 0.09, 0.0, -0.02 + i * 0.09, 0.20, 1, CREAM)
+    for u, v, r, col in ((0.62, 0.30, 0.20, GOLD), (0.79, 0.20, 0.17, CREAM),
+                         (0.92, 0.34, 0.14, GOLD)):
+        sc.disc(u, v, sc.h * r, col)
+        sc.line(u, v + r, u, 0.90, 1, CREAM)
+
+
+def scene_chess(sc):
+    """A six-by-four board and a king."""
+    for j in range(4):
+        for i in range(6):
+            col = CREAM if (i + j) % 2 == 0 else shade(CREAM, 0.34)
+            sc.rect(0.03 + i * 0.095, 0.20 + j * 0.175,
+                    0.125 + i * 0.095, 0.375 + j * 0.175, col)
+    sc.rect(0.66, 0.78, 0.84, sc.base, CREAM)
+    sc.rect(0.69, 0.64, 0.81, 0.80, CREAM)
+    sc.disc(0.75, 0.58, sc.h * 0.09, CREAM)
+    sc.rect(0.73, 0.40, 0.77, 0.52, CREAM)
+    sc.rect(0.71, 0.32, 0.74, 0.42, CREAM)
+    sc.rect(0.76, 0.30, 0.79, 0.42, CREAM)
+    sc.rect(0.80, 0.34, 0.83, 0.42, CREAM)
+
+
+def scene_mumbai(sc):
+    """The Gateway of India arch, three candles, a strip of sea."""
+    sc.rect(0.02, 0.26, 0.60, sc.base, CREAM)
+    sc.poly([(0.0, 0.28), (0.31, 0.06), (0.62, 0.28)], CREAM)
+    sc.rect(0.16, 0.48, 0.46, sc.base, INK)
+    sc.disc(0.31, 0.48, sc.w * 0.085, INK)
+    sc.rect(0.22, 0.40, 0.40, 0.50, CREAM)
+    sc.rect(0.0, 0.88, 1.0, 0.94, WATER)
+    for u in (0.68, 0.77, 0.86):
+        sc.rect(u, 0.56, u + 0.05, sc.base, CREAM)
+        sc.poly([(u + 0.012, 0.56), (u + 0.025, 0.40),
+                 (u + 0.038, 0.56)], GOLD)
+
+
+def scene_treaty(sc):
+    """A blue field with twelve gold stars in a ring, and a white paper."""
+    sc.rect(0.04, 0.08, 0.44, 0.94, tint(WATER, 0.14))
+    sc.ring(0.24, 0.50, sc.h * 0.30, GOLD, max(1, sc.h * 0.055))
+    sc.rect(0.52, 0.14, 0.88, 0.90, WHITE)
+    for v in (0.28, 0.40, 0.52, 0.64):
+        sc.rect(0.56, v, 0.84, v + 0.05, shade(WATER, 0.88))
+    sc.rect(0.56, 0.76, 0.68, 0.82, GOLD)
+
+
+def scene_court(sc):
+    """A courthouse with a pediment on four columns and a red flag."""
+    sc.poly([(0.04, 0.40), (0.48, 0.10), (0.92, 0.40)], CREAM)
+    sc.rect(0.04, 0.40, 0.92, 0.48, CREAM)
+    for u in (0.08, 0.27, 0.46, 0.65):
+        sc.rect(u, 0.48, u + 0.10, 0.90, CREAM)
+    sc.rect(0.02, 0.88, 0.94, sc.base, CREAM)
+    sc.rect(0.72, 0.04, 0.75, 0.44, SMOKE)
+    sc.poly([(0.75, 0.06), (0.93, 0.12), (0.75, 0.20)], RED)
+
+
+SCENES = {
+    "ebola": scene_ebola,
+    "niger": scene_niger,
+    "mine": scene_mine,
+    "gaza": scene_gaza,
+    "nepal": scene_nepal,
+    "jets": scene_jets,
+    "measles": scene_measles,
+    "satellites": scene_satellites,
+    "parade": scene_parade,
+    "chess": scene_chess,
+    "mumbai": scene_mumbai,
+    "treaty": scene_treaty,
+    "court": scene_court,
+}
 
 
 def png_chunk(tag, payload):
@@ -515,7 +726,7 @@ def write_png(path, buf):
 
 
 # Coarse land outlines in (lon, lat).  These are deliberately blocky: at
-# 472x174 px a continent is a silhouette, not a coastline.  Small, news-
+# 472x122 px a continent is a silhouette, not a coastline.  Small, news-
 # bearing landmasses get their own polygons so their cities land on land.
 LANDMASSES = {
     "North America": [
@@ -694,15 +905,17 @@ def unproj(x, y):
     return lon, lat
 
 
-# Fixed search order for nudging a crowded pin.  The first offset that is
-# on land, inside the map and clear of every pin already placed wins, so
-# the layout is a pure function of the data.
+PIN_R = 8
+PIN_MIN_GAP = 16
+PIN_SHIFT = 12
+
+
 def _pin_offsets():
     out = []
-    for dx in range(-14, 15):
-        for dy in range(-14, 15):
+    for dx in range(-PIN_SHIFT, PIN_SHIFT + 1):
+        for dy in range(-PIN_SHIFT, PIN_SHIFT + 1):
             d2 = dx * dx + dy * dy
-            if d2 <= 14 * 14:
+            if d2 <= PIN_SHIFT * PIN_SHIFT:
                 out.append((round(d2 ** 0.5, 3), abs(dx) + abs(dy), dx, dy))
     out.sort()
     return [(dx, dy) for _, _, dx, dy in out]
@@ -710,64 +923,87 @@ def _pin_offsets():
 
 PIN_OFFSETS = _pin_offsets()
 
-PIN_MIN_GAP = 12
-PIN_SHIFT = 14
 
-
-def pin_layout(items):
-    """One (x, y) per item, de-clustered and kept on land.
-
-    On a 472 px world a degree of longitude is 1.3 px, so two stories from
-    the same city are one dot.  Those cannot be separated within the 14 px
-    allowance without leaving land, so the later one is merged into the
-    nearest placed pin and that pin is drawn with a ring to show a cluster.
-    """
-    featured = sorted([i for i in items if i["featured"]],
-                      key=lambda i: (-proj(i["lon"], i["lat"])[0], i["rank"]))
-    order = featured + sorted([i for i in items if not i["featured"]],
-                              key=lambda i: i["id"])
-    placed = []
-    out = []
-    for it in order:
+def _pin_candidates(items):
+    cand = []
+    for it in sorted([i for i in items if i["featured"]],
+                     key=lambda i: i["rank"]):
         bx, by = proj(it["lon"], it["lat"])
-        best = None
+        opts = []
         for dx, dy in PIN_OFFSETS:
             x, y = bx + dx, by + dy
-            if not (MAP_X0 + 6 <= x <= MAP_X1 - 6):
+            if not (MAP_X0 + PIN_R + 1 <= x <= MAP_X1 - PIN_R - 1):
                 continue
-            if not (MAP_Y0 + 6 <= y <= MAP_Y1 - 6):
+            if not (MAP_Y0 + PIN_R + 1 <= y <= MAP_Y1 - PIN_R - 1):
                 continue
             lon, lat = unproj(x, y)
             if not point_in_land(lon, lat):
                 continue
-            if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < PIN_MIN_GAP ** 2
-                   for p in placed):
+            # A US story must never be nudged into Canada.
+            if it["region"] == "North America" and lat > 49.5:
                 continue
-            best = (x, y)
-            break
-        merged_into = None
-        if best is None:
-            near = min(placed, key=lambda p: (p[0] - bx) ** 2 + (p[1] - by) ** 2)
-            best = (near[0], near[1])
-            merged_into = near[2]
-            near[4] += 1
-        placed.append([best[0], best[1], it["id"], it["featured"], 0])
-        if merged_into is None:
-            placed[-1][4] = 1
-        out.append({"id": it["id"], "x": best[0], "y": best[1],
-                    "rank": it.get("rank"), "featured": bool(it["featured"]),
-                    "region": it["region"], "merged_into": merged_into,
-                    "cluster": 0})
-    counts = {p[2]: p[4] for p in placed}
-    for pin in out:
-        pin["cluster"] = counts.get(pin["merged_into"] or pin["id"], 1)
-    return out
+            opts.append((x, y))
+        cand.append((it, bx, by, opts))
+    return cand
+
+
+def pin_layout(items):
+    """One (x, y) per featured item: nearest on-land spot, 16 px apart.
+
+    Depth-first over the rank order, nearest offset first, so the result
+    is a pure function of the data.  Non-featured stories are returned as
+    small dots that stay clear of every numbered pin.
+    """
+    cand = _pin_candidates(items)
+    placed = []
+    chosen = [None] * len(cand)
+    budget = [200000]
+
+    def solve(i):
+        if i == len(cand):
+            return True
+        _, _, _, opts = cand[i]
+        for x, y in opts:
+            budget[0] -= 1
+            if budget[0] < 0:
+                return False
+            ok = True
+            for px, py in placed:
+                if (x - px) ** 2 + (y - py) ** 2 < PIN_MIN_GAP ** 2:
+                    ok = False
+                    break
+            if not ok:
+                continue
+            placed.append((x, y))
+            chosen[i] = (x, y)
+            if solve(i + 1):
+                return True
+            placed.pop()
+        chosen[i] = None
+        return False
+
+    if not solve(0):
+        fail("PINS do not fit")
+    pins = []
+    for (it, bx, by, _), (x, y) in zip(cand, chosen):
+        pins.append({"id": it["id"], "x": x, "y": y, "rank": it["rank"],
+                     "featured": True, "region": it["region"],
+                     "lon": it["lon"], "lat": it["lat"]})
+    dots = []
+    for it in sorted([i for i in items if not i["featured"]],
+                     key=lambda i: i["id"]):
+        x, y = proj(it["lon"], it["lat"])
+        if any((x - p["x"]) ** 2 + (y - p["y"]) ** 2
+               < (PIN_R + 4) ** 2 for p in pins):
+            continue
+        dots.append({"id": it["id"], "x": x, "y": y, "region": it["region"]})
+    return pins, dots
 
 
 def draw_map(buf, items):
-    fill_rect(buf, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, PANEL)
-    stroke_rect(buf, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, PANEL_EDGE)
-    draw_text(buf, 532, 70, "WHERE IT HAPPENED", 2, MUTED)
+    fill_rect(buf, MAP_X, MAP_Y, MAP_W, MAP_H, PANEL)
+    stroke_rect(buf, MAP_X, MAP_Y, MAP_W, MAP_H, PANEL_EDGE)
+    draw_text(buf, MAP_X0, 68, "WHERE IT HAPPENED", 2, MUTED)
 
     clip = (MAP_X0, MAP_Y0, MAP_X1, MAP_Y1)
 
@@ -783,93 +1019,145 @@ def draw_map(buf, items):
         fill_poly(buf, poly, LAND, clip)
         poly_outline(buf, poly, COAST, clip)
 
-    by_id = {it["id"]: it for it in items}
-    pins = [p for p in pin_layout(items) if p["merged_into"] is None]
-    for pin in pins:
-        if pin["featured"]:
-            continue
-        if pin["cluster"] > 1:
-            stroke_circle(buf, pin["x"], pin["y"], 4, 1, WHITE, LAND)
-        fill_circle(buf, pin["x"], pin["y"], 3, WHITE)
-        fill_circle(buf, pin["x"], pin["y"], 2,
-                    REGION_COLOR[by_id[pin["id"]]["region"]])
+    pins, dots = pin_layout(items)
+    for dot in dots:
+        # A 4x4 px dot, as specified; the numbered pins are 16 px discs.
+        fill_rect(buf, dot["x"] - 2, dot["y"] - 2, 4, 4,
+                  REGION_COLOR[dot["region"]])
 
-    # Featured markers are slightly larger discs.  Two pins may sit 12 px
-    # apart, so the outer radius stays at 5 and no digit is drawn inside:
-    # a 14 px digit would need a 7 px radius and the markers would collide.
-    for pin in sorted([p for p in pins if p["featured"]],
-                      key=lambda p: p["rank"]):
+    for pin in sorted(pins, key=lambda p: p["rank"]):
         color = REGION_COLOR[pin["region"]]
-        if pin["cluster"] > 1:
-            stroke_circle(buf, pin["x"], pin["y"], 5, 1, WHITE, LAND)
-        fill_circle(buf, pin["x"], pin["y"], 4, WHITE)
-        fill_circle(buf, pin["x"], pin["y"], 3, color)
+        # White disc with a region-coloured ring; the rank digit is 7 px
+        # tall (scale 1), so two digits still fit inside a 16 px pin.
+        fill_circle(buf, pin["x"], pin["y"], PIN_R, color)
+        fill_circle(buf, pin["x"], pin["y"], PIN_R - 2, WHITE)
+        label = str(pin["rank"])
+        tw = text_width(label, 1)
+        draw_text(buf, pin["x"] - tw // 2, pin["y"] - 3, label, 1, INK)
 
 
-def draw_badge(buf, x, y, label, scale=2):
-    fill_rect(buf, x, y, 30, 24, WHITE)
-    draw_text(buf, x + (30 - text_width(label, scale)) // 2,
-              y + (24 - 7 * scale) // 2, label, scale, BADGE_INK)
+def draw_badge(buf, x, y, label, height=14):
+    w = max(20, text_width(label, 2) + 8)
+    fill_rect(buf, x, y, w, height, WHITE)
+    draw_text(buf, x + (w - text_width(label, 2)) // 2,
+              y + (height - 14) // 2, label, 2, BADGE_INK)
+    return w
 
 
-def draw_header(buf, n_regions):
+def draw_status_row(buf, it, x, y, limit):
+    """Status pill plus short source name; returns the right edge used."""
+    status = it["status"]
+    source = it["source"]
+    w = text_width(status, 2) + 6
+    fill_rect(buf, x, y, w, 14, STATUS_COLOR[status])
+    draw_text(buf, x + 3, y, status, 2, INK)
+    sx = x + w + 6
+    draw_text(buf, sx, y, source, 2, WHITE)
+    end = sx + text_width(source, 2)
+    if end > limit:
+        fail("OVERFLOW %d status row" % it["id"])
+    return end
+
+
+def status_boxes(items):
+    """(label, x, y, w, h) for every status pill, in draw order."""
+    out = []
+    hero = [i for i in items if i["featured"] and i["rank"] == 1][0]
+    out.append(("hero", HERO_X + 8, HERO_Y + 128,
+                text_width(hero["status"], 2) + 6, 14))
+    for idx, it in enumerate(sorted([i for i in items
+                                     if i["featured"] and i["rank"] != 1],
+                                    key=lambda i: i["rank"])):
+        x = TILE_XS[idx % 4]
+        y = TILE_YS[idx // 4]
+        out.append(("tile %d" % it["rank"], x + 6, y + 140,
+                    text_width(it["status"], 2) + 6, 14))
+    return out
+
+
+def draw_header(buf, n_stories, n_regions):
     draw_text(buf, 12, 14, "WORLD NEWS 26 NOV 2026", 4, WHITE)
-    line1 = "36 STORIES, %d REGIONS" % n_regions
+    line1 = "%d STORIES, %d REGIONS" % (n_stories, n_regions)
     draw_text(buf, 1012 - text_width(line1, 2), 12, line1, 2, MUTED)
     line2 = "ALL DATED 26 NOV 2026"
     draw_text(buf, 1012 - text_width(line2, 2), 34, line2, 2, ACCENT)
 
 
+def scene_box(items):
+    """(label, x, y, w, h) for the hero scene and the twelve tile scenes."""
+    boxes = [("hero", HERO_X + HERO_SCENE_X, HERO_Y + HERO_SCENE_Y,
+              HERO_SCENE_W, HERO_SCENE_H)]
+    for idx, it in enumerate(sorted([i for i in items
+                                     if i["featured"] and i["rank"] != 1],
+                                    key=lambda i: i["rank"])):
+        boxes.append(("tile %d" % it["rank"],
+                      TILE_XS[idx % 4] + SCENE_X,
+                      TILE_YS[idx // 4] + SCENE_Y, SCENE_W, SCENE_H))
+    return boxes
+
+
+def draw_scene(buf, it, x, y, w, h):
+    fn = SCENES[it["scene"]]
+    fn(Scene(buf, x, y, w, h, REGION_COLOR[it["region"]]))
+
+
 def draw_hero(buf, it):
     color = REGION_COLOR[it["region"]]
     fill_rect(buf, HERO_X, HERO_Y, HERO_W, HERO_H, color)
-    draw_badge(buf, 24, 76, str(it["rank"]))
-    draw_text(buf, 60, 80, it["region"], 2, WHITE)
+    bw = draw_badge(buf, HERO_X + 8, HERO_Y + 4, "1")
+    draw_text(buf, HERO_X + 8 + bw + 8, HERO_Y + 4, it["region"], 2, WHITE)
 
     stat = it["big_stat"]
-    scale = fit_scale(stat, HERO_STAT_W, 10, 6)
-    if text_width(stat, scale) > HERO_STAT_W:
+    # The brief fixes the hero figure at scale 6 (42 px tall, y 24..66);
+    # the widest stat in the data, "12,000", is 210 px, inside the 292 px
+    # column that stops at x 300.
+    scale = 6
+    if text_width(stat, scale) > 292:
         fail("OVERFLOW %d" % it["id"])
-    draw_text(buf, 24, 108, stat, scale, WHITE)
+    draw_text(buf, HERO_X + 8, HERO_Y + 24, stat, scale, WHITE)
 
-    lines = wrap(it["headline"], 3, 476, 2)
+    lines = wrap(it["headline"], 2, 292, 2)
     if lines is None:
         fail("OVERFLOW %d" % it["id"])
     for i, line in enumerate(lines):
-        draw_text(buf, 24, 192 + i * 26, line, 3, WHITE)
+        draw_text(buf, HERO_X + 8, HERO_Y + 74 + i * 18, line, 2, WHITE)
 
-    draw_icon_plate(buf, it, HERO_X, HERO_Y)
+    draw_scene(buf, it, HERO_X + HERO_SCENE_X, HERO_Y + HERO_SCENE_Y,
+               HERO_SCENE_W, HERO_SCENE_H)
+    draw_status_row(buf, it, HERO_X + 8, HERO_Y + 128,
+                    HERO_X + HERO_W - 8)
 
 
 def draw_tile(buf, it, x, y):
     color = REGION_COLOR[it["region"]]
     fill_rect(buf, x, y, TILE_W, TILE_H, color)
-    draw_badge(buf, x + 8, y + 8, str(it["rank"]))
-    draw_text(buf, x + 46, y + 12, SHORT_REGION[it["region"]], 2, WHITE)
+    bw = draw_badge(buf, x + 6, y + 3, str(it["rank"]))
+    draw_text(buf, x + 6 + bw + 6, y + 3, SHORT_REGION[it["region"]], 2, WHITE)
 
-    # The stat shares the top row with the plate, so its width stops short
-    # of the plate; the headline starts below the plate and may use the
-    # whole tile width.
+    draw_scene(buf, it, x + SCENE_X, y + SCENE_Y, SCENE_W, SCENE_H)
+
     stat = it["big_stat"]
-    scale = fit_scale(stat, TILE_STAT_W, 5, 3)
-    if text_width(stat, scale) > TILE_STAT_W:
+    # Scale 4 (28 px tall, y 76..104) as specified; the widest stat is
+    # "30+ DEAD" at 195 px inside the 229 px tile column.
+    scale = 4
+    if text_width(stat, scale) > TILE_W - 16:
         fail("OVERFLOW %d" % it["id"])
-    draw_text(buf, x + 8, y + 34, stat, scale, WHITE)
+    draw_text(buf, x + 8, y + 76, stat, scale, WHITE)
 
     lines = wrap(it["headline"], 2, TILE_W - 16, 2)
     if lines is None:
         fail("OVERFLOW %d" % it["id"])
     for i, line in enumerate(lines):
-        draw_text(buf, x + 8, y + 78 + i * 16, line, 2, WHITE)
+        draw_text(buf, x + 8, y + 106 + i * 18, line, 2, WHITE)
 
-    draw_icon_plate(buf, it, x, y)
+    draw_status_row(buf, it, x + 6, y + 140, x + TILE_W - 4)
 
 
 LEGEND_RIGHT = 1012
 LEGEND_SWATCH = 10
 LEGEND_GAP = 5
 LEGEND_ITEM_GAP = 12
-LEGEND_Y = 682
+LEGEND_Y = 706
 
 
 def legend_layout(regions):
@@ -891,33 +1179,54 @@ def draw_legend(buf, items):
     regions = [r for r in REGION_ORDER
                if any(i["region"] == r for i in items)]
     for region, x, w in legend_layout(regions):
-        fill_rect(buf, x, LEGEND_Y + 3, LEGEND_SWATCH, LEGEND_SWATCH,
+        fill_rect(buf, x, LEGEND_Y + 2, LEGEND_SWATCH, LEGEND_SWATCH,
                   REGION_COLOR[region])
-        stroke_rect(buf, x, LEGEND_Y + 3, LEGEND_SWATCH, LEGEND_SWATCH, BG)
+        stroke_rect(buf, x, LEGEND_Y + 2, LEGEND_SWATCH, LEGEND_SWATCH, BG)
         draw_text(buf, x + LEGEND_SWATCH + LEGEND_GAP, LEGEND_Y,
                   REGION_ABBR[region], 2, MUTED)
 
 
-def draw_list(buf, items):
-    fill_rect(buf, 12, 676, 1000, 1, PANEL_EDGE)
-    draw_text(buf, 12, 682, "ALSO TODAY, 23 MORE", 2, MUTED)
-    draw_legend(buf, items)
+def list_rows(items):
+    """(item, text, x, y) for the 21 single-line stories, column by column."""
+    out = []
     for idx, it in enumerate(items):
-        col = 0
-        row = idx
-        while row >= LIST_COL_LEN[col]:
-            row -= LIST_COL_LEN[col]
-            col += 1
-        x = LIST_XS[col]
-        y = LIST_Y0 + row * LIST_PITCH
-        fill_rect(buf, x, y, 28, 20, REGION_COLOR[it["region"]])
-        num = str(it["number"])
-        draw_text(buf, x + (28 - text_width(num, 2)) // 2, y + 3, num, 2, WHITE)
-        lines = wrap(it["headline"], 2, 292, 2)
-        if lines is None:
-            fail("OVERFLOW %d" % it["id"])
-        for i, line in enumerate(lines):
-            draw_text(buf, x + 36, y + 2 + i * 16, line, 2, LIST_INK)
+        col = idx // LIST_ROWS
+        row = idx % LIST_ROWS
+        out.append((it, it["short"], LIST_XS[col], LIST_Y0 + row * LIST_PITCH))
+    return out
+
+
+def draw_list(buf, items):
+    draw_text(buf, 12, 706, "ALSO TODAY, %d MORE" % len(items), 2, MUTED)
+    draw_legend(buf, items)
+    for it, text, x, y in list_rows(items):
+        fill_rect(buf, x, y + 2, 10, 10, REGION_COLOR[it["region"]])
+        draw_text(buf, x + 16, y, text, 2, LIST_INK)
+        if x + 16 + text_width(text, 2) > x + LIST_COL_W:
+            fail("OVERFLOW %d list" % it["id"])
+
+
+def date_lines():
+    """(text, x, y, role) for the date-check box, title and legend."""
+    out = [(DATE_TITLE, DATE_X + 12, DATE_Y + 6, "title")]
+    for i, text in enumerate(DATE_ITEMS):
+        col = i // 3
+        row = i % 3
+        out.append((text, DATE_X + 12 + col * 522,
+                    DATE_Y + 30 + row * 20, "item"))
+    for i, text in enumerate(DATE_LEGEND):
+        out.append((text, DATE_X + 12, DATE_Y + 100 + i * 20, "legend"))
+    return out
+
+
+def draw_date_check(buf):
+    stroke_rect(buf, DATE_X, DATE_Y, DATE_W, DATE_H, RED, 2)
+    for text, x, y, role in date_lines():
+        color = WHITE if role == "title" else (
+            MUTED if role == "legend" else LIST_INK)
+        draw_text(buf, x, y, text, 2, color)
+        if x + text_width(text, 2) > DATE_X + DATE_W - 6:
+            fail("OVERFLOW date check")
 
 
 def fail(message):
@@ -931,36 +1240,70 @@ def load_news():
         items = json.load(fh)
 
     for it in items:
-        for ch in (it["headline"] + it.get("big_stat", "") + it["region"]):
+        for ch in (it["headline"] + it.get("big_stat", "") + it["region"]
+                   + it.get("short", "") + it.get("source", "")
+                   + it.get("status", "")):
             if ch.upper() not in FONT:
                 fail("NOGLYPH %d %s" % (it["id"], ch))
-        if len(it["headline"]) > 44:
-            fail("OVERFLOW %d" % it["id"])
-        if len(it.get("big_stat", "")) > 11:
-            fail("OVERFLOW %d" % it["id"])
+        if it.get("short") and len(it["short"]) > 24:
+            fail("OVERFLOW %d short" % it["id"])
+        if it.get("source") and len(it["source"]) > 8:
+            fail("OVERFLOW %d source" % it["id"])
+        if it.get("status") not in STATUSES:
+            fail("STATUS %d %s" % (it["id"], it.get("status")))
+        if it["featured"]:
+            width = 292 if it["rank"] == 1 else TILE_W - 16
+            lines = wrap(it["headline"], 2, width, 2)
+            if lines is None or sum(len(line) for line in lines) > 36:
+                fail("OVERFLOW %d headline" % it["id"])
 
-    featured = sorted([i for i in items if i["featured"]], key=lambda i: i["rank"])
+    featured, rest = split_items(items)
+    return items, featured, rest
+
+
+def split_items(items):
+    """(featured by rank, list by region then id) — the one true ordering."""
+    featured = sorted([i for i in items if i["featured"]],
+                      key=lambda i: i["rank"])
     rest = sorted([i for i in items if not i["featured"]],
                   key=lambda i: (REGION_ORDER.index(i["region"]), i["id"]))
-    for n, it in enumerate(featured, 1):
-        it["number"] = it["rank"]
-    for n, it in enumerate(rest, len(featured) + 1):
-        it["number"] = n
-    return items, featured, rest
+    return featured, rest
+
+
+def render(items, buf=None, text=True):
+    """Draw the whole poster onto a canvas and return (buf, text_log).
+
+    check.py calls this directly so it can inspect the text boxes without
+    a second render, and main() calls it once to write the PNG.  Passing
+    text=False skips every string, which lets the checks prove that no
+    glyph lands inside an illustration box.
+    """
+    global TEXT_LOG, DRAW_TEXT
+    saved = TEXT_LOG
+    saved_draw = DRAW_TEXT
+    TEXT_LOG = [] if text else None
+    DRAW_TEXT = text
+    try:
+        featured, rest = split_items(items)
+        regions = {it["region"] for it in items}
+        if buf is None:
+            buf = new_canvas()
+        draw_header(buf, len(items), len(regions))
+        draw_hero(buf, featured[0])
+        for idx, it in enumerate(featured[1:]):
+            draw_tile(buf, it, TILE_XS[idx % 4], TILE_YS[idx // 4])
+        draw_map(buf, items)
+        draw_list(buf, rest)
+        draw_date_check(buf)
+        return buf, list(TEXT_LOG or ())
+    finally:
+        TEXT_LOG = saved
+        DRAW_TEXT = saved_draw
 
 
 def main():
     items, featured, rest = load_news()
-    regions = {it["region"] for it in items}
-
-    buf = new_canvas()
-    draw_header(buf, len(regions))
-    draw_hero(buf, featured[0])
-    for idx, it in enumerate(featured[1:]):
-        draw_tile(buf, it, TILE_XS[idx % 4], TILE_YS[idx // 4])
-    draw_map(buf, items)
-    draw_list(buf, rest)
-
+    buf, _ = render(items)
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
     write_png(os.path.join(out_dir, "entry.png"), buf)
@@ -968,4 +1311,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

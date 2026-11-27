@@ -75,7 +75,16 @@ CITIES = [
 ]
 
 # A featured stat must carry a number, or be one of these verbs.
-STAT_WORDS = {"WARNS", "TARIFFS", "HALTED", "REJECTS"}
+STAT_WORDS = {"ACCUSES", "TARIFFS", "HALTED", "REJECTS"}
+
+# v7 corrections, pinned to the exact text the brief asks for.
+TILE2_STAT = "ACCUSES"
+TILE2_HEADLINE = "KREMLIN ACCUSES KYIV OF WIDENING WAR"
+TILE7_STAT = "1.58T EUR"
+ARGENTINA_SHORT = "ARGENTINA PRIMARY DEBATE"
+ARGENTINA_HEADLINE = "Argentina Senate weighs suspending primaries"
+# The Senate only debated the bill; any of these would claim a ballot.
+VOTE_WORDS = ("VOTE", "VOTES", "VOTED", "BALLOT", "POLL", "ELECTION")
 
 NUMBER_WORDS = {
     1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
@@ -293,13 +302,21 @@ def check_stats():
     check("featured stats are numbers or verbs", not bad, ", ".join(bad))
 
 
-def check_headline_budget(main, items):
-    """A featured headline is two 14 px lines and at most 36 characters."""
+def headline_problems(main, items):
+    """A featured headline is two 14 px lines and at most 36 characters.
+
+    Each tile is measured against the box main.py actually draws it in, so
+    the one tile whose headline needs a wider column is not failed for
+    using it.
+    """
     bad = []
     for it in items:
         if not it.get("featured"):
             continue
-        width = 292 if it["rank"] == 1 else main.TILE_W - 16
+        if it["rank"] == 1:
+            width = 292
+        else:
+            _hx, width = main.tile_headline_box(it)
         lines = main.wrap(it["headline"], 2, width, 2)
         if lines is None:
             bad.append("id %d will not wrap" % it["id"])
@@ -307,7 +324,147 @@ def check_headline_budget(main, items):
         total = sum(len(line) for line in lines)
         if total > 36:
             bad.append("id %d %d chars" % (it["id"], total))
+        if max(len(line) for line in lines) > 36:
+            bad.append("id %d line over 36" % it["id"])
+    return bad
+
+
+def check_headline_budget(main, items):
+    bad = headline_problems(main, items)
     check("featured headlines fit two lines and 36 characters", not bad,
+          ", ".join(bad[:4]))
+
+
+def tile_text_problems(main, items):
+    """Tiles 2 and 7 must carry the corrected stat and headline wording."""
+    feat = {i["rank"]: i for i in items if i.get("featured")}
+    bad = []
+    two = feat.get(2, {})
+    if two.get("big_stat", "").upper() != TILE2_STAT:
+        bad.append("tile 2 stat %r" % two.get("big_stat"))
+    if two.get("headline", "").upper() != TILE2_HEADLINE:
+        bad.append("tile 2 headline %r" % two.get("headline"))
+    if "WARN" in two.get("headline", "").upper():
+        bad.append("tile 2 still says warns")
+    for field in ("source", "status"):
+        if two.get(field) != ("REUTERS" if field == "source" else "REPORTED"):
+            bad.append("tile 2 %s %r" % (field, two.get(field)))
+    seven = feat.get(7, {})
+    if seven.get("big_stat", "").upper() != TILE7_STAT:
+        bad.append("tile 7 stat %r" % seven.get("big_stat"))
+    if "EUR" not in seven.get("headline", "").upper():
+        bad.append("tile 7 headline %r" % seven.get("headline"))
+    if seven.get("status") != "REPORTED" or seven.get("source") != "REUTERS":
+        bad.append("tile 7 source/status")
+    # The stat and the headline must still be drawn, in the tile's own
+    # column, at a scale the tile can hold.
+    _buf, log = main.render(items, main.new_canvas())
+    drawn = [t for t, _x, _y, _s, _c in log]
+    for want in (TILE2_STAT, TILE7_STAT):
+        if want not in drawn:
+            bad.append("%r not drawn" % want)
+    lines = main.wrap(seven["headline"], 2,
+                      main.tile_headline_box(seven)[1], 2) or []
+    for line in lines:
+        if line not in drawn:
+            bad.append("%r not drawn" % line[:16])
+    return bad
+
+
+def check_tile_text(main, items):
+    bad = tile_text_problems(main, items)
+    check("tiles 2 and 7 carry the corrected stat and headline", not bad,
+          ", ".join(bad[:4]))
+
+
+def argentina_problems(items):
+    """The Senate is debating, not voting: no row may imply a ballot."""
+    bad = []
+    hits = [i for i in items if i.get("featured") is False
+            and "ARGENTINA" in i.get("short", "").upper()]
+    if len(hits) != 1:
+        return ["%d Argentina rows" % len(hits)]
+    it = hits[0]
+    short = it["short"]
+    if short.upper() != ARGENTINA_SHORT:
+        bad.append("short %r" % short)
+    if short != short.upper():
+        bad.append("short not uppercase")
+    if len(short) > 24:
+        bad.append("short %d chars" % len(short))
+    if "PRIMARY" not in short.upper():
+        bad.append("short lacks PRIMARY")
+    for word in VOTE_WORDS:
+        if word in short.upper():
+            bad.append("short says %s" % word)
+    if it["headline"] != ARGENTINA_HEADLINE:
+        bad.append("headline %r" % it["headline"][:28])
+    if it["status"] != "ONGOING" or it["source"] != "REUTERS":
+        bad.append("source/status changed")
+    if it["region"] != "Latin America":
+        bad.append("region %s" % it["region"])
+    if (it["lat"], it["lon"]) != (-34.6, -58.38):
+        bad.append("geo moved")
+    return bad
+
+
+def check_argentina(items):
+    bad = argentina_problems(items)
+    check("Argentina row reads PRIMARY DEBATE, not a vote", not bad,
+          ", ".join(bad[:4]))
+
+
+def status_legend_problems(pixels, main, log):
+    """Both new legend lines are drawn, in style with the existing ones."""
+    bad = []
+    boxes = {(t, x, y): (w, h) for t, x, y, w, h in text_boxes(log)}
+    drawn = {}
+    for text, x, y, scale, colour in log:
+        if text in main.STATUS_LEGEND:
+            drawn[text] = (x, y, scale, colour)
+    for text in main.STATUS_LEGEND:
+        if text not in drawn:
+            bad.append("%r not drawn" % text)
+            continue
+        x, y, scale, colour = drawn[text]
+        if scale != 2:
+            bad.append("%r scale %d" % (text[:10], scale))
+        if colour != main.MUTED:
+            bad.append("%r colour %s" % (text[:10], colour))
+        w, h = boxes[(text, x, y)]
+        if x + w > main.DATE_X + main.DATE_W - 6:
+            bad.append("%r overruns" % text[:10])
+        if y + h > main.DATE_Y:
+            bad.append("%r crosses frame" % text[:10])
+        # The line must actually have ink on the canvas.
+        ink = 0
+        for yy in range(y, y + h):
+            for xx in range(x, x + w):
+                if pixel(pixels, xx, yy) == main.MUTED:
+                    ink += 1
+        if ink < 40:
+            bad.append("%r ink %d" % (text[:10], ink))
+    # Both legend lines share one baseline and never touch each other.
+    spots = [(drawn[t][0], drawn[t][1], boxes[(t,) + drawn[t][:2]][0])
+             for t in main.STATUS_LEGEND if t in drawn]
+    if len(spots) == 2:
+        a, b = spots
+        if a[1] != b[1]:
+            bad.append("legend baselines differ")
+        if a[0] < b[0] and a[0] + a[2] + 4 > b[0]:
+            bad.append("legend lines touch")
+    # Nothing else may be overwritten in that band.
+    for text, x, y, w, h in text_boxes(log):
+        if text in main.STATUS_LEGEND:
+            continue
+        if y + h > main.STATUS_LEGEND_Y - 2 and y < main.STATUS_LEGEND_Y + 16:
+            bad.append("%r shares the legend band" % text[:12])
+    return bad
+
+
+def check_status_legend(pixels, main, log):
+    bad = status_legend_problems(pixels, main, log)
+    check("both new status legend lines are drawn", not bad,
           ", ".join(bad[:4]))
 
 
@@ -1109,17 +1266,64 @@ def selftest(pixels, main, items, log):
                 flat_kremlin[i:i + 3] = bytes((20, 40, 60))
     caught_elements = bool(scene_element_problems(flat_kremlin, main, items))
 
+    # v7: revert tile 2 to "warns", drop the EUR from tile 7, put the
+    # Argentina vote row back, and erase the two new legend lines.
+    old_two = [dict(i) for i in items]
+    for it in old_two:
+        if it.get("rank") == 2:
+            it["big_stat"] = "WARNS"
+            it["headline"] = "Kremlin warns Kyiv over widening war"
+    caught_tile2 = bool(tile_text_problems(main, old_two))
+    no_eur = [dict(i) for i in items]
+    for it in no_eur:
+        if it.get("rank") == 7:
+            it["big_stat"] = "1.58T"
+            it["headline"] = "EU leaders wrestle 1.58T budget"
+    caught_tile7 = bool(tile_text_problems(main, no_eur))
+    # One tamper must not be able to hide behind the other's failure.
+    caught_tile7_only = bool(tile_text_problems(main, no_eur)) and not any(
+        "tile 2" in b for b in tile_text_problems(main, no_eur))
+    old_arg = [dict(i) for i in items]
+    for it in old_arg:
+        if it.get("short") == ARGENTINA_SHORT:
+            it["short"] = "ARGENTINA PRIMARY VOTE"
+    caught_arg = bool(argentina_problems(old_arg))
+    old_head = [dict(i) for i in items]
+    for it in old_head:
+        if it.get("short") == ARGENTINA_SHORT:
+            it["headline"] = "Argentina primary vote held"
+    caught_arg_head = bool(argentina_problems(old_head))
+    no_legend = bytearray(pixels)
+    for text, x, y in main.status_legend_lines():
+        w = main.text_width(text, 2)
+        for yy in range(y, y + 14):
+            for xx in range(x, x + w):
+                i = (yy * 1024 + xx) * 3
+                no_legend[i:i + 3] = bytes(BG)
+    caught_legend_lines = bool(status_legend_problems(no_legend, main, log))
+    # Moving a legend line into the DATE CHECK frame must be rejected.
+    shifted = [(t, x, main.STATUS_LEGEND_Y + 40, s, c)
+               if t in main.STATUS_LEGEND else (t, x, y, s, c)
+               for t, x, y, s, c in log]
+    caught_legend_place = bool(status_legend_problems(pixels, main, shifted))
+
     check("selftest: every pixel and layout check bites",
           caught_white and caught_color and caught_scene and caught_text
           and caught_land and caught_legend and caught_digit and caught_frame
           and caught_status and caught_rows and caught_stale
           and caught_elements
-          and caught_nepal,
+          and caught_nepal and caught_tile2 and caught_tile7
+          and caught_tile7_only and caught_arg and caught_arg_head
+          and caught_legend_lines and caught_legend_place,
           "white=%s colour=%s scene=%s text=%s land=%s legend=%s digit=%s "
-          "frame=%s status=%s rows=%s stale=%s elements=%s"
+          "frame=%s status=%s rows=%s stale=%s elements=%s nepal=%s "
+          "tile2=%s tile7=%s tile7only=%s arg=%s arghead=%s lines=%s place=%s"
           % (caught_white, caught_color, caught_scene, caught_text,
              caught_land, caught_legend, caught_digit, caught_frame,
-             caught_status, caught_rows, caught_stale, caught_elements))
+             caught_status, caught_rows, caught_stale, caught_elements,
+             caught_nepal, caught_tile2, caught_tile7, caught_tile7_only,
+             caught_arg, caught_arg_head, caught_legend_lines,
+             caught_legend_place))
 
 
 def main():
@@ -1139,6 +1343,8 @@ def main():
         check_news()
         check_stats()
         check_headline_budget(main_mod, items)
+        check_tile_text(main_mod, items)
+        check_argentina(items)
         check_source_status()
         check_no_failure_markers()
         _buf, log = main_mod.render(items, main_mod.new_canvas())
@@ -1156,6 +1362,7 @@ def main():
         check_list(main_mod, items, log)
         check_pins(pixels, main_mod, items)
         check_legend(pixels, main_mod, items)
+        check_status_legend(pixels, main_mod, log)
         check_text_fits(main_mod, log)
         if "--selftest" in sys.argv:
             selftest(pixels, main_mod, items, log)

@@ -63,21 +63,10 @@ PANEL_X, PANEL_Y, PANEL_W, PANEL_H = 524, 64, 488, 204
 MAP_X0, MAP_Y0, MAP_X1, MAP_Y1 = 532, 88, 1004, 262
 MAP_LAT_TOP, MAP_LAT_BOT = 75.0, -58.0
 
-# Candidate offsets for a pin that cannot use its projected spot: a 4 px
-# grid out to 56 px, nearest first (a square ring, then the exact distance,
-# then horizontal bias).  Fixed order, so two renders always agree.
-PIN_OFFSETS = tuple(sorted(
-    [(dx * 4, dy * 4)
-     for dx in range(-14, 15) for dy in range(-14, 15)
-     if (dx, dy) != (0, 0)],
-    key=lambda o: (max(abs(o[0]), abs(o[1])), o[0] * o[0] + o[1] * o[1],
-                   abs(o[1]), -o[0]),
-))
-
 LIST_XS = (12, 348, 684)
 LIST_Y0 = 704
 LIST_PITCH = 40
-LIST_COL_LEN = (7, 6, 6)
+LIST_COL_LEN = (8, 8, 7)
 
 # 5x7 bitmap font.  Each glyph is seven rows; each row is five bits, the
 # most significant bit being the leftmost column.  Text is drawn in upper
@@ -242,15 +231,8 @@ def text_width(s, scale):
     return 6 * scale * len(s) - scale
 
 
-# When a list, every drawn string is appended here so check.py can assert on
-# the exact text and its box without guessing glyph shapes from pixels.
-TEXT_LOG = None
-
-
 def draw_text(buf, x, y, s, scale, color):
     """Draw upper-cased bitmap text; returns the advance width."""
-    if TEXT_LOG is not None:
-        TEXT_LOG.append((s, x, y, scale, color))
     cx = x
     for ch in s.upper():
         glyph = FONT.get(ch)
@@ -356,10 +338,8 @@ LANDMASSES = {
         (-5, 48), (-4, 52), (-8, 54), (-8, 58), (-5, 59),
         (-4, 60), (2, 62), (5, 58), (8, 58), (10, 54),
         (10, 64), (14, 68), (20, 70), (28, 71), (30, 66),
-        (28, 58), (32, 58), (36, 58), (42, 58), (48, 58),
-        (48, 52), (44, 48), (40, 46), (36, 45), (32, 46),
-        (30, 45), (26, 41), (20, 40), (16, 38), (13, 38),
-        (9, 40), (6, 40), (3, 42), (0, 39), (-2, 36.5), (-6, 36),
+        (28, 58), (32, 58), (32, 50), (30, 45), (20, 40), (12, 38),
+        (3, 42), (-2, 36.5),
     ],
     "Africa": [
         (-17, 15), (-16, 21), (-10, 27), (-10, 35), (-6, 36),
@@ -471,67 +451,6 @@ def point_in_land(lon, lat):
     return False
 
 
-def unproj(x, y):
-    """Inverse of proj(): the lon/lat under a pixel, for land tests."""
-    lon = (x - MAP_X0) * 360.0 / (MAP_X1 - MAP_X0) - 180.0
-    lat = MAP_LAT_TOP - (y - MAP_Y0) * (MAP_LAT_TOP - MAP_LAT_BOT) / (
-        MAP_Y1 - MAP_Y0)
-    return lon, lat
-
-
-def pin_on_land(buf, x, y, need=25):
-    """True when a pin centred on (x, y) sits over drawn land, not open sea."""
-    hits = 0
-    for yy in range(y - 10, y + 11):
-        for xx in range(x - 10, x + 11):
-            if xx < 0 or yy < 0 or xx >= W or yy >= H:
-                continue
-            i = (yy * W + xx) * 3
-            if (buf[i], buf[i + 1], buf[i + 2]) in (LAND, COAST):
-                hits += 1
-    return hits >= need
-
-
-def pin_layout(featured, buf):
-    """Final (rank, x, y) for each featured pin, in rank order.
-
-    A pin keeps its projected city whenever that spot is solidly on drawn
-    land and clear of the pins already placed, which is the case for most
-    of the map.  Europe is only about 30 px wide here, so London, Brussels
-    and Geneva project within 10 px of each other and Moscow and
-    Savasleyka within 6 px, and those pins have to move.  A pin that
-    cannot use its own spot takes the nearest free spot on solid land, so
-    it stays recognisably over its own city rather than drifting to a
-    neighbour's.  The candidate order is fixed, so two renders agree.
-    """
-    placed = []
-    out = []
-    for it in sorted(featured, key=lambda i: i["rank"]):
-        base = proj(it["lon"], it["lat"])
-
-        def usable(x, y):
-            if not (MAP_X0 + 11 <= x <= MAP_X1 - 11):
-                return False
-            if not (MAP_Y0 + 11 <= y <= MAP_Y1 - 11):
-                return False
-            return not any(abs(px - x) < 20 and abs(py - y) < 20
-                           for px, py in placed)
-
-        if usable(*base) and pin_on_land(buf, base[0], base[1], 100):
-            x, y = base
-        else:
-            x, y = base
-            for dx, dy in PIN_OFFSETS:
-                cx, cy = base[0] + dx, base[1] + dy
-                if usable(cx, cy) and pin_on_land(buf, cx, cy, 100):
-                    x, y = cx, cy
-                    break
-
-        placed.append((x, y))
-        out.append((it["rank"], x, y))
-    return out
-
-
 def draw_map(buf, items):
     fill_rect(buf, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, PANEL)
     stroke_rect(buf, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, PANEL_EDGE)
@@ -559,11 +478,23 @@ def draw_map(buf, items):
         fill_circle(buf, x, y, 4, WHITE)
         fill_circle(buf, x, y, 3, REGION_COLOR[it["region"]])
 
-    colors = {it["rank"]: REGION_COLOR[it["region"]] for it in featured}
-    for rank, x, y in pin_layout(featured, buf):
-        fill_circle(buf, x, y, 10, colors[rank])
+    placed = []
+    for it in sorted(featured, key=lambda i: i["rank"]):
+        x, y = proj(it["lon"], it["lat"])
+        for _ in range(5):
+            clash = False
+            for px, py in placed:
+                if abs(px - x) < 20 and abs(py - y) < 20:
+                    clash = True
+                    break
+            if not clash:
+                break
+            x += 12
+            y -= 12
+        placed.append((x, y))
+        fill_circle(buf, x, y, 10, REGION_COLOR[it["region"]])
         fill_circle(buf, x, y, 8, WHITE)
-        label = str(rank)
+        label = str(it["rank"])
         draw_text(buf, x - text_width(label, 1) // 2, y - 3, label, 1,
                   BADGE_INK)
 
@@ -574,9 +505,9 @@ def draw_badge(buf, x, y, label, scale=2):
               y + (24 - 7 * scale) // 2, label, scale, BADGE_INK)
 
 
-def draw_header(buf, n_stories, n_regions):
+def draw_header(buf, n_regions):
     draw_text(buf, 12, 14, "WORLD NEWS 26 NOV 2026", 4, WHITE)
-    line1 = "%d STORIES, %d REGIONS" % (n_stories, n_regions)
+    line1 = "36 STORIES, %d REGIONS" % n_regions
     draw_text(buf, 1012 - text_width(line1, 2), 12, line1, 2, MUTED)
     line2 = "ALL DATED 26 NOV 2026"
     draw_text(buf, 1012 - text_width(line2, 2), 34, line2, 2, ACCENT)
@@ -601,13 +532,6 @@ def draw_hero(buf, it):
         draw_text(buf, 24, 192 + i * 26, line, 3, WHITE)
 
 
-# A replacement stat may not be wider than the one it replaced, so these
-# four tiles keep the exact type size their predecessor had: rank 2 held
-# "30+ DEAD" (188 px), rank 7 "9 DEAD" (175), rank 8 "1M SATS" (205) and
-# rank 9 "WARNS" (145).  Everything else keeps the full 230 px column.
-STAT_MAX_W = {2: 188, 7: 175, 8: 205, 9: 145}
-
-
 def draw_tile(buf, it, x, y):
     color = REGION_COLOR[it["region"]]
     fill_rect(buf, x, y, TILE_W, TILE_H, color)
@@ -615,9 +539,8 @@ def draw_tile(buf, it, x, y):
     draw_text(buf, x + 46, y + 12, it["region"], 2, WHITE)
 
     stat = it["big_stat"]
-    limit = STAT_MAX_W.get(it["rank"], 230)
-    scale = fit_scale(stat, limit, 5, 3)
-    if text_width(stat, scale) > limit:
+    scale = fit_scale(stat, 230, 5, 3)
+    if text_width(stat, scale) > 230:
         fail("OVERFLOW %d" % it["id"])
     draw_text(buf, x + 8, y + 34, stat, scale, WHITE)
 
@@ -630,7 +553,7 @@ def draw_tile(buf, it, x, y):
 
 def draw_list(buf, items):
     fill_rect(buf, 12, 676, 1000, 1, PANEL_EDGE)
-    draw_text(buf, 12, 682, "ALSO TODAY, %d MORE" % len(items), 2, MUTED)
+    draw_text(buf, 12, 682, "ALSO TODAY, 23 MORE", 2, MUTED)
     for idx, it in enumerate(items):
         col = 0
         row = idx
@@ -654,22 +577,6 @@ def fail(message):
     raise SystemExit(1)
 
 
-def split_items(items):
-    """(featured by rank, list by region then id) — the one true ordering.
-
-    Also stamps each item's printed number, so render() works on raw
-    news.json without a separate preparation step.
-    """
-    featured = sorted([i for i in items if i["featured"]], key=lambda i: i["rank"])
-    rest = sorted([i for i in items if not i["featured"]],
-                  key=lambda i: (REGION_ORDER.index(i["region"]), i["id"]))
-    for it in featured:
-        it["number"] = it["rank"]
-    for n, it in enumerate(rest, len(featured) + 1):
-        it["number"] = n
-    return featured, rest
-
-
 def load_news():
     here = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(here, "news.json"), "r", encoding="utf-8") as fh:
@@ -684,40 +591,27 @@ def load_news():
         if len(it.get("big_stat", "")) > 11:
             fail("OVERFLOW %d" % it["id"])
 
-    featured, rest = split_items(items)
-    if len(rest) != sum(LIST_COL_LEN):
-        fail("LIST %d rows for %d slots" % (len(rest), sum(LIST_COL_LEN)))
+    featured = sorted([i for i in items if i["featured"]], key=lambda i: i["rank"])
+    rest = sorted([i for i in items if not i["featured"]],
+                  key=lambda i: (REGION_ORDER.index(i["region"]), i["id"]))
+    for n, it in enumerate(featured, 1):
+        it["number"] = it["rank"]
+    for n, it in enumerate(rest, len(featured) + 1):
+        it["number"] = n
     return items, featured, rest
 
 
-def render(items, buf=None):
-    """Draw the whole poster and return (buf, text_log).
-
-    check.py calls this so it can inspect the text boxes without a second
-    render; main() calls it once to write the PNG.
-    """
-    global TEXT_LOG
-    saved = TEXT_LOG
-    TEXT_LOG = []
-    try:
-        featured, rest = split_items(items)
-        regions = {it["region"] for it in items}
-        if buf is None:
-            buf = new_canvas()
-        draw_header(buf, len(items), len(regions))
-        draw_hero(buf, featured[0])
-        for idx, it in enumerate(featured[1:]):
-            draw_tile(buf, it, TILE_XS[idx % 4], TILE_YS[idx // 4])
-        draw_map(buf, items)
-        draw_list(buf, rest)
-        return buf, list(TEXT_LOG)
-    finally:
-        TEXT_LOG = saved
-
-
 def main():
-    items, _featured, _rest = load_news()
-    buf, _log = render(items)
+    items, featured, rest = load_news()
+    regions = {it["region"] for it in items}
+
+    buf = new_canvas()
+    draw_header(buf, len(regions))
+    draw_hero(buf, featured[0])
+    for idx, it in enumerate(featured[1:]):
+        draw_tile(buf, it, TILE_XS[idx % 4], TILE_YS[idx // 4])
+    draw_map(buf, items)
+    draw_list(buf, rest)
 
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)

@@ -39,17 +39,6 @@
     "source_url": "https://www.channelnewsasia.com/asia/myanmar-will-not-comply-icj-rohingya-genocide-ruling-6584511"
   },
   {
-    "id": 5,
-    "headline": "Hasina return bid tests Bangladesh politics",
-    "region": "Asia",
-    "category": "politics",
-    "date": "2026-11-26",
-    "lat": 23.81,
-    "lon": 90.41,
-    "featured": false,
-    "source_url": "https://www.thehindu.com/news/international/sheikh-hasinas-return-gambit-tests-bangladeshs-political-fault-lines/article71745537.ece"
-  },
-  {
     "id": 6,
     "headline": "Nepal moves to declare 213 Indians dead",
     "region": "Asia",
@@ -204,17 +193,6 @@
     "source_url": "https://www.japantimes.co.jp/environment/2026/11/26/climate-change/opec-eu-cop31-collapse/"
   },
   {
-    "id": 21,
-    "headline": "New images show DART crater on Dimorphos",
-    "region": "Europe",
-    "category": "science",
-    "date": "2026-11-26",
-    "lat": 49.87,
-    "lon": 8.65,
-    "featured": false,
-    "source_url": "https://www.straitstimes.com/world/united-states/new-images-reveal-crater-on-asteroid-struck-by-dart-spacecraft"
-  },
-  {
     "id": 22,
     "headline": "DR Congo Ebola cases pass 12,000",
     "region": "Africa",
@@ -281,19 +259,6 @@
     "lon": -66.11,
     "featured": false,
     "source_url": "https://www.aljazeera.com/news/2026/11/26/puerto-ricos-supreme-court-cancels-major-power-contract"
-  },
-  {
-    "id": 34,
-    "headline": "Brazil blasts new US tariff proposals",
-    "region": "Latin America",
-    "category": "economy",
-    "date": "2026-11-26",
-    "lat": -15.79,
-    "lon": -47.88,
-    "featured": true,
-    "rank": 10,
-    "big_stat": "TARIFFS",
-    "source_url": "https://www.aljazeera.com/news/2026/11/26/brazil-blasts-unacceptable-new-us-tariff-proposals"
   },
   {
     "id": 36,
@@ -366,6 +331,24 @@
     "featured": false,
     "date_evidence": "BUENOS AIRES, November 26 (Reuters) - the Senate was due on Thursday to weigh a bill suspending primary elections",
     "source_url": "https://theprint.in/world/argentinas-senate-poised-to-suspend-primaries-boosting-mileis-re-election-bid/3109769/"
+  },
+  {
+    "id": 42,
+    "headline": "Mumbai marks 18 years since 26/11",
+    "region": "Asia",
+    "category": "politics",
+    "date": "2026-11-26",
+    "lat": 18.92,
+    "lon": 72.83,
+    "featured": true,
+    "rank": 10,
+    "big_stat": "18 YEARS",
+    "scene": "mumbai",
+    "source": "PTI",
+    "status": "REPORTED",
+    "date_evidence": "MUMBAI, November 26 (PTI) - the city paused on Thursday to remember 26/11 on its 18th anniversary",
+    "source_url": "https://theprint.in/india/mumbai-pauses-to-remember-26-11-on-18th-anniversary-as-leaders-pay-floral-tributes-to-bravehearts/3109728/",
+    "icon": "candle"
   },
   {
     "id": 44,

@@ -120,23 +120,23 @@ DATE_ITEMS = (
     "HOUTHI CLAIM ON RAS TANURA: 25 NOV",
 )
 DATE_TITLE = "DATE CHECK: EVERY STORY IS FROM 26 NOV. LEFT OUT (NOT 26 NOV):"
-# The first two lines have always sat inside the date box.  The status
-# legend has to name CLAIM and ONGOING too, and the two-column layout the
-# brief allows cannot hold them: 598 + 718 = 1316 px against 982 px of
-# box interior.  So the two new lines go in the empty band between the
-# list (ends y 840) and the frame (starts y 872), full width, at the same
-# 14 px size and MUTED colour as the lines inside the box.
-DATE_LEGEND = (
-    "OFFICIAL GOV OR INSTITUTION | CONFIRMED 2+ SOURCES",
-    "REPORTED 1 OUTLET | CLAIM ONE SIDE | ONGOING STILL UNFOLDING",
-)
+# The four status meanings share one 14 px row above the box.  The full
+# wording does not fit the 982 px interior, so each meaning is shortened
+# but still names its status.  The 34 px gap is exactly three blank
+# columns of the 14 px face, as the brief asks: the row ends at x 982.
 STATUS_LEGEND = (
-    "CLAIM ONE SIDE SAYS SO",
-    "ONGOING STILL DEVELOPING",
+    "OFFICIAL GOV SOURCE",
+    "REPORTED 1 OUTLET",
+    "CLAIM ONE SIDE SAYS",
+    "ONGOING DEVELOPING",
 )
 STATUS_LEGEND_Y = 846
 STATUS_LEGEND_X = 12
-STATUS_LEGEND_GAP = 48
+STATUS_LEGEND_GAP = 34
+# The two old legend lines sat at DATE_Y+100 and DATE_Y+120; the UTC
+# timeline takes exactly that space, two rows of 14 px type at 20 px pitch.
+TIMELINE_Y = DATE_Y + 100
+TIMELINE_PITCH = 20
 
 # Region names are too wide for a 246 px tile at the 14 px minimum type
 # size, so tiles use these short forms; the hero has room for the full name.
@@ -1389,25 +1389,45 @@ def draw_list(buf, items):
 
 
 def date_lines():
-    """(text, x, y, role) for the date-check box, title and legend."""
+    """(text, x, y, role) for the date-check box, title and six items."""
     out = [(DATE_TITLE, DATE_X + 12, DATE_Y + 6, "title")]
     for i, text in enumerate(DATE_ITEMS):
         col = i // 3
         row = i % 3
         out.append((text, DATE_X + 12 + col * 522,
                     DATE_Y + 30 + row * 20, "item"))
-    for i, text in enumerate(DATE_LEGEND):
-        out.append((text, DATE_X + 12, DATE_Y + 100 + i * 20, "legend"))
     return out
 
 
-def status_legend_lines():
-    """(text, x, y) for the two status lines above the date box.
+def timeline_rows():
+    """The two drawn UTC lines, as news.json states them.
 
-    The band between the list and the frame is 32 px, one 14 px row plus
-    the 20 px pitch, so the two lines sit side by side in two columns
-    rather than stacked.  Each keeps the 14 px size and MUTED colour of
-    the legend lines inside the box.
+    They are 58 and 54 characters, 350 and 324 px at 6 px per glyph, so
+    both fit the 976 px interior without moving a word.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, "news.json"), "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    return data["timeline"]["rows"]
+
+
+def draw_timeline(buf, rows):
+    for i, text in enumerate(rows):
+        x = DATE_X + 12
+        y = TIMELINE_Y + i * TIMELINE_PITCH
+        draw_text(buf, x, y, text, 2, MUTED)
+        if x + text_width(text, 2) > DATE_X + DATE_W - 6:
+            fail("OVERFLOW timeline")
+        if y + 14 > DATE_Y + DATE_H - 4:
+            fail("OVERFLOW timeline bottom")
+
+
+def status_legend_lines():
+    """(text, x, y) for the one legend row above the date box.
+
+    All four statuses share a single 14 px row in the band between the
+    list (ends y 840) and the frame (starts y 872), in the same MUTED
+    colour and 14 px size as the old lines inside the box.
     """
     out = []
     x = STATUS_LEGEND_X
@@ -1424,14 +1444,14 @@ def draw_status_legend(buf):
             fail("OVERFLOW status legend")
 
 
-def draw_date_check(buf):
+def draw_date_check(buf, timeline):
     stroke_rect(buf, DATE_X, DATE_Y, DATE_W, DATE_H, RED, 2)
     for text, x, y, role in date_lines():
-        color = WHITE if role == "title" else (
-            MUTED if role == "legend" else LIST_INK)
+        color = WHITE if role == "title" else LIST_INK
         draw_text(buf, x, y, text, 2, color)
         if x + text_width(text, 2) > DATE_X + DATE_W - 6:
             fail("OVERFLOW date check")
+    draw_timeline(buf, timeline)
 
 
 def fail(message):
@@ -1439,10 +1459,30 @@ def fail(message):
     raise SystemExit(1)
 
 
+def load_timeline():
+    """The two drawn UTC lines plus the four entries behind them.
+
+    The times are publication times for the first three reports, not the
+    exact minute of the event: the brief says so and no other clock is
+    invented here.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(here, "news.json"), "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    timeline = data["timeline"]
+    if len(timeline["entries"]) != 4 or len(timeline["rows"]) != 2:
+        fail("TIMELINE shape")
+    for text in timeline["rows"]:
+        for ch in text:
+            if ch.upper() not in FONT:
+                fail("NOGLYPH timeline %s" % ch)
+    return timeline
+
+
 def load_news():
     here = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(here, "news.json"), "r", encoding="utf-8") as fh:
-        items = json.load(fh)
+        items = json.load(fh)["items"]
 
     for it in items:
         for ch in (it["headline"] + it.get("big_stat", "") + it["region"]
@@ -1505,7 +1545,7 @@ def render(items, buf=None, text=True):
         draw_map(buf, items)
         draw_list(buf, rest)
         draw_status_legend(buf)
-        draw_date_check(buf)
+        draw_date_check(buf, timeline_rows())
         return buf, list(TEXT_LOG or ())
     finally:
         TEXT_LOG = saved

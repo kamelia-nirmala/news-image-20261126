@@ -14,6 +14,7 @@ import ast
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -85,6 +86,20 @@ ARGENTINA_SHORT = "ARGENTINA PRIMARY DEBATE"
 ARGENTINA_HEADLINE = "Argentina Senate weighs suspending primaries"
 # The Senate only debated the bill; any of these would claim a ballot.
 VOTE_WORDS = ("VOTE", "VOTES", "VOTED", "BALLOT", "POLL", "ELECTION")
+
+# v8: the chess tile reports the drawn third game, and the footer carries
+# a four-entry UTC timeline.  The match score is a hyphenated pair, so the
+# headline may state the outcome in words instead of repeating the digits.
+CHESS_STAT = "1.5-1.5"
+CHESS_SOURCE = "FIDE"
+CHESS_HEADLINE_WORDS = ("DRAW", "GAME", "3")
+SCORE_RE = re.compile(r"^\d+(\.\d+)?-\d+(\.\d+)?$")
+OUTCOME_WORDS = ("draw", "drew", "level", "share", "split", "beaten", "win")
+TIMELINE_HOURS = ("07:07", "10:22", "11:00", "14:00")
+TIMELINE_LABELS = ("IRAQ 8 FRENCH GET LIFE", "KREMLIN ACCUSES KYIV",
+                   "EU SUMMIT IN BRUSSELS", "CHESS GAME 3 STARTS")
+LEGEND_STATUSES = ("OFFICIAL", "REPORTED", "CLAIM", "ONGOING")
+MIN_TEXT_SCALE = 2
 
 NUMBER_WORDS = {
     1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
@@ -216,7 +231,13 @@ def check_imports():
 
 
 def load_news():
-    return json.load(open(NEWS, encoding="utf-8"))
+    data = json.load(open(NEWS, encoding="utf-8"))
+    return data["items"]
+
+
+def load_timeline():
+    data = json.load(open(NEWS, encoding="utf-8"))
+    return data["timeline"]
 
 
 def check_news():
@@ -274,6 +295,30 @@ def check_news():
     check("news.json is well formed", not problems, "; ".join(problems[:4]))
 
 
+def stat_in_headline(stat, headline):
+    """True when every numeric token of the stat is grounded in the headline.
+
+    A match score such as "1.5-1.5" is the one exception: it may be left
+    out of the headline when the headline already names the result, which
+    is how a draw is written ("draw Game 3").
+    """
+    head = headline.lower().replace(",", "")
+    for n in stat.replace(",", "").split():
+        core = n.strip("+%$").lower()
+        if not any(c.isdigit() for c in core):
+            continue
+        if core.endswith("m") and core[:-1].isdigit():
+            core = core[:-1]
+        if core.isdigit() and NUMBER_WORDS.get(int(core)) in head.split():
+            continue
+        if SCORE_RE.match(core) and any(
+                word in head for word in OUTCOME_WORDS):
+            continue
+        if core and core not in head:
+            return False
+    return True
+
+
 def check_stats():
     """Every featured tile needs a number or one of the four allowed verbs."""
     items = load_news()
@@ -286,19 +331,8 @@ def check_stats():
         if not has_digit and stat not in STAT_WORDS:
             bad.append("id %d %r" % (it["id"], stat))
             continue
-        head = it["headline"].lower().replace(",", "")
-        for n in stat.replace(",", "").split():
-            core = n.strip("+%$").lower()
-            if not any(c.isdigit() for c in core):
-                continue
-            if core.endswith("m") and core[:-1].isdigit():
-                core = core[:-1]
-            if core.isdigit() and NUMBER_WORDS.get(int(core)) in head.split():
-                continue
-            if core and core not in head:
-                bad.append("id %d stat %r not in headline"
-                           % (it["id"], stat))
-                break
+        if not stat_in_headline(stat, it["headline"]):
+            bad.append("id %d stat %r not in headline" % (it["id"], stat))
     check("featured stats are numbers or verbs", not bad, ", ".join(bad))
 
 
@@ -415,7 +449,11 @@ def check_argentina(items):
 
 
 def status_legend_problems(pixels, main, log):
-    """Both new legend lines are drawn, in style with the existing ones."""
+    """One 14 px row above the box names all four statuses.
+
+    Each line must be drawn at scale 2 in MUTED, sit on the single
+    legend baseline, stay inside the box width, and carry real ink.
+    """
     bad = []
     boxes = {(t, x, y): (w, h) for t, x, y, w, h in text_boxes(log)}
     drawn = {}
@@ -436,7 +474,6 @@ def status_legend_problems(pixels, main, log):
             bad.append("%r overruns" % text[:10])
         if y + h > main.DATE_Y:
             bad.append("%r crosses frame" % text[:10])
-        # The line must actually have ink on the canvas.
         ink = 0
         for yy in range(y, y + h):
             for xx in range(x, x + w):
@@ -444,16 +481,25 @@ def status_legend_problems(pixels, main, log):
                     ink += 1
         if ink < 40:
             bad.append("%r ink %d" % (text[:10], ink))
-    # Both legend lines share one baseline and never touch each other.
-    spots = [(drawn[t][0], drawn[t][1], boxes[(t,) + drawn[t][:2]][0])
+    # One row, in order, never touching: the brief asks for a single line.
+    spots = [(t, drawn[t][0], drawn[t][1],
+              boxes[(t,) + drawn[t][:2]][0])
              for t in main.STATUS_LEGEND if t in drawn]
-    if len(spots) == 2:
-        a, b = spots
-        if a[1] != b[1]:
-            bad.append("legend baselines differ")
-        if a[0] < b[0] and a[0] + a[2] + 4 > b[0]:
-            bad.append("legend lines touch")
-    # Nothing else may be overwritten in that band.
+    if spots:
+        ys = {s[2] for s in spots}
+        if len(ys) != 1:
+            bad.append("legend rows %s" % sorted(ys))
+        ordered = sorted(spots, key=lambda s: s[1])
+        for i in range(len(ordered) - 1):
+            a, b = ordered[i], ordered[i + 1]
+            if a[1] + a[3] + 3 > b[1]:
+                bad.append("%s/%s touch" % (a[0][:8], b[0][:8]))
+    # Every status the tiles use must be named in the legend.
+    joined = " ".join(main.STATUS_LEGEND)
+    for status in LEGEND_STATUSES:
+        if status not in joined:
+            bad.append("legend lacks %s" % status)
+    # Nothing else may share that band.
     for text, x, y, w, h in text_boxes(log):
         if text in main.STATUS_LEGEND:
             continue
@@ -464,7 +510,176 @@ def status_legend_problems(pixels, main, log):
 
 def check_status_legend(pixels, main, log):
     bad = status_legend_problems(pixels, main, log)
-    check("both new status legend lines are drawn", not bad,
+    check("the status legend names all four statuses on one row", not bad,
+          ", ".join(bad[:4]))
+
+
+def chess_problems(main, items):
+    """Tile 10 reports the drawn third game: 1.5-1.5, from FIDE."""
+    bad = []
+    feat = {i["rank"]: i for i in items if i.get("featured")}
+    it = feat.get(10, {})
+    stat = it.get("big_stat", "").upper()
+    if stat != CHESS_STAT:
+        bad.append("stat %r" % it.get("big_stat"))
+    head = it.get("headline", "").upper()
+    for word in CHESS_HEADLINE_WORDS:
+        if word not in head:
+            bad.append("headline lacks %s" % word)
+    if it.get("source") != CHESS_SOURCE:
+        bad.append("source %r" % it.get("source"))
+    if it.get("status") != "ONGOING":
+        bad.append("status %r" % it.get("status"))
+    if it.get("region") != "Europe":
+        bad.append("region %r" % it.get("region"))
+    # No "1-1" anywhere: not the stat, headline, summary, evidence, or
+    # anything drawn on the poster.
+    hay = " ".join(str(it.get(k, "")) for k in
+                   ("big_stat", "headline", "summary", "date_evidence",
+                    "short", "source"))
+    if "1-1" in hay:
+        bad.append("1-1 survives in the data")
+    _buf, log = main.render(items, main.new_canvas())
+    for text, _x, _y, _s, _c in log:
+        if "1-1" in text and "1.5-1.5" not in text:
+            bad.append("1-1 drawn as %r" % text[:16])
+    drawn = [t for t, _x, _y, _s, _c in log]
+    if CHESS_STAT not in drawn:
+        bad.append("%r not drawn" % CHESS_STAT)
+    for line in main.wrap(it.get("headline", ""), 2,
+                          main.tile_headline_box(it)[1], 2) or []:
+        if line not in drawn:
+            bad.append("%r not drawn" % line[:16])
+    return bad
+
+
+def check_chess(main, items):
+    bad = chess_problems(main, items)
+    check("tile 10 reads 1.5-1.5, DRAW GAME 3, from FIDE", not bad,
+          ", ".join(bad[:4]))
+
+
+def timeline_data_problems(timeline):
+    """news.json carries exactly the four briefed entries, each with proof."""
+    bad = []
+    entries = timeline.get("entries") or []
+    if len(entries) != 4:
+        bad.append("%d entries" % len(entries))
+    for i, want in enumerate(TIMELINE_HOURS):
+        if i >= len(entries):
+            break
+        got = entries[i]
+        if got.get("jam_utc") != want:
+            bad.append("entry %d time %r" % (i, got.get("jam_utc")))
+        if got.get("label") != TIMELINE_LABELS[i]:
+            bad.append("entry %d label %r" % (i, got.get("label")))
+        proof = got.get("bukti") or ""
+        if not proof.strip():
+            bad.append("entry %d no proof" % i)
+        elif not ("http" in proof or "verification" in proof.lower()):
+            bad.append("entry %d proof not a URL" % i)
+    rows = timeline.get("rows") or []
+    if len(rows) != 2:
+        bad.append("%d rows" % len(rows))
+    joined = " ".join(rows)
+    for want in TIMELINE_HOURS:
+        if want not in joined:
+            bad.append("rows lack %s" % want)
+    for want in TIMELINE_LABELS:
+        if want not in joined:
+            bad.append("rows lack %s" % want[:12])
+    return bad
+
+
+def check_timeline_data():
+    bad = timeline_data_problems(load_timeline())
+    check("timeline in news.json has four stamped entries with proof",
+          not bad, ", ".join(bad[:4]))
+
+
+def timeline_problems(pixels, main, log):
+    """The two UTC lines are drawn inside the box, at 14 px or larger."""
+    bad = []
+    rows = main.timeline_rows()
+    boxes = text_boxes(log)
+    drawn = {(t, x, y): (w, h) for t, x, y, w, h in boxes}
+    seen = {}
+    for text, x, y, scale, colour in log:
+        if text in rows:
+            seen[text] = (x, y, scale, colour)
+    if len(rows) != 2:
+        bad.append("%d rows" % len(rows))
+    for i, text in enumerate(rows):
+        if text not in seen:
+            bad.append("row %d not drawn" % i)
+            continue
+        x, y, scale, colour = seen[text]
+        if scale < MIN_TEXT_SCALE:
+            bad.append("row %d scale %d" % (i, scale))
+        if colour != main.MUTED:
+            bad.append("row %d colour %s" % (i, colour))
+        w, h = drawn[(text, x, y)]
+        if x < main.DATE_X + 4 or x + w > main.DATE_X + main.DATE_W - 6:
+            bad.append("row %d width" % i)
+        if y < main.DATE_Y + 4 or y + h > main.DATE_Y + main.DATE_H - 4:
+            bad.append("row %d height" % i)
+        ink = 0
+        for yy in range(y, y + h):
+            for xx in range(x, x + w):
+                if pixel(pixels, xx, yy) == main.MUTED:
+                    ink += 1
+        if ink < 60:
+            bad.append("row %d ink %d" % (i, ink))
+        for want in TIMELINE_HOURS[i * 2:i * 2 + 2]:
+            if want not in text:
+                bad.append("row %d lacks %s" % (i, want))
+    # The two rows must be separate lines, in order, inside the box.
+    if len(seen) == 2:
+        a, b = seen[rows[0]], seen[rows[1]]
+        if b[1] <= a[1]:
+            bad.append("rows not stacked")
+        if abs((b[1] - a[1]) - main.TIMELINE_PITCH) > 1:
+            bad.append("row pitch %d" % (b[1] - a[1]))
+    # Nothing else may occupy the timeline band.
+    for text, x, y, w, h in boxes:
+        if text in rows:
+            continue
+        if y + h > main.TIMELINE_Y - 2 and y < main.TIMELINE_Y + 34:
+            bad.append("%r shares the timeline band" % text[:12])
+    return bad
+
+
+def check_timeline(pixels, main, log):
+    bad = timeline_problems(pixels, main, log)
+    check("four UTC timeline entries are drawn inside the date box",
+          not bad, ", ".join(bad[:4]))
+
+
+def text_scale_problems(log, main=None, items=None):
+    """Every string on the poster is 14 px or taller.
+
+    The pin numbers are the exception: they are part of the 7 px marker
+    graphics the earlier brief fixed (white r=8 disc, 7 px digit), so
+    they are not running text and must not change.
+    """
+    pins = []
+    if main is not None and items is not None:
+        pins, _dots = main.pin_layout(items)
+    small = []
+    for text, x, y, scale, _c in log:
+        if scale >= MIN_TEXT_SCALE:
+            continue
+        on_pin = any(abs(x - p["x"]) <= 6 and abs(y - p["y"]) <= 6
+                     for p in pins)
+        if on_pin and text.strip().isdigit():
+            continue
+        small.append("%r@%d" % (text[:12], scale))
+    return small
+
+
+def check_text_scale(log, main=None, items=None):
+    bad = text_scale_problems(log, main, items)
+    check("no text smaller than 14 px (pin digits excepted)", not bad,
           ", ".join(bad[:4]))
 
 
@@ -694,6 +909,8 @@ def check_status_rows(main, items, log):
 
 
 def date_problems(pixels, main, log):
+    """The six excluded stories and the title stay put; the old legend
+    lines inside the box are gone, replaced by the UTC timeline."""
     x, y, w, h = main.DATE_X, main.DATE_Y, main.DATE_W, main.DATE_H
     bad = []
     if pixel(pixels, x + 1, y + 1) != RED:
@@ -706,11 +923,18 @@ def date_problems(pixels, main, log):
             inside.append(text)
             if tx + tw > x + w - 4 or ty + th > y + h - 4:
                 bad.append("%s leaves the frame" % text[:14])
-    for want in main.DATE_ITEMS + (main.DATE_TITLE,) + main.DATE_LEGEND:
+    for want in main.DATE_ITEMS + (main.DATE_TITLE,):
         if want not in inside:
             bad.append("missing %r" % want[:18])
     if len(main.DATE_ITEMS) != 6:
         bad.append("%d date items" % len(main.DATE_ITEMS))
+    for gone in ("OFFICIAL GOV OR INSTITUTION | CONFIRMED 2+ SOURCES",
+                 "REPORTED 1 OUTLET | CLAIM ONE SIDE | ONGOING STILL UNFOLDING"):
+        if gone in inside:
+            bad.append("old legend line remains")
+    for row in main.timeline_rows():
+        if row not in inside:
+            bad.append("timeline %r outside" % row[:12])
     return bad
 
 
@@ -1307,6 +1531,43 @@ def selftest(pixels, main, items, log):
                for t, x, y, s, c in log]
     caught_legend_place = bool(status_legend_problems(pixels, main, shifted))
 
+    # v8: an old chess tile, a blanked timeline, a legend missing a
+    # status, a shrunken string, and timeline data with no proof.
+    old_chess = [dict(i) for i in items]
+    for it in old_chess:
+        if it.get("rank") == 10:
+            it["big_stat"] = "1-1"
+            it["headline"] = "Gukesh and Sindarov level at 1-1"
+            it["source"] = "CHESS"
+    caught_chess = bool(chess_problems(main, old_chess))
+    caught_score = bool(chess_problems(main, [dict(
+        i, big_stat="2-1") if i.get("rank") == 10 else i for i in items]))
+    no_timeline = bytearray(pixels)
+    for row, x, y in [(t, main.DATE_X + 12, main.TIMELINE_Y + i * main.TIMELINE_PITCH)
+                      for i, t in enumerate(main.timeline_rows())]:
+        w = main.text_width(row, 2)
+        for yy in range(y, y + 14):
+            for xx in range(x, x + w):
+                i = (yy * 1024 + xx) * 3
+                no_timeline[i:i + 3] = bytes(BG)
+    caught_timeline = bool(timeline_problems(no_timeline, main, log))
+    short_legend = main.STATUS_LEGEND[:3]
+    saved_legend = main.STATUS_LEGEND
+    try:
+        main.STATUS_LEGEND = short_legend
+        caught_legend_status = bool(status_legend_problems(pixels, main, log))
+    finally:
+        main.STATUS_LEGEND = saved_legend
+    tiny = [(t, x, y, 1, c) if t == main.STATUS_LEGEND[0] else (t, x, y, s, c)
+            for t, x, y, s, c in log]
+    caught_scale = bool(text_scale_problems(tiny))
+    bad_timeline = dict(load_timeline())
+    bad_timeline["entries"] = bad_timeline["entries"][:3]
+    caught_timeline_data = bool(timeline_data_problems(bad_timeline))
+    unproven = dict(load_timeline())
+    unproven["entries"] = [dict(e, bukti="") for e in unproven["entries"]]
+    caught_timeline_proof = bool(timeline_data_problems(unproven))
+
     check("selftest: every pixel and layout check bites",
           caught_white and caught_color and caught_scene and caught_text
           and caught_land and caught_legend and caught_digit and caught_frame
@@ -1314,16 +1575,23 @@ def selftest(pixels, main, items, log):
           and caught_elements
           and caught_nepal and caught_tile2 and caught_tile7
           and caught_tile7_only and caught_arg and caught_arg_head
-          and caught_legend_lines and caught_legend_place,
+          and caught_legend_lines and caught_legend_place
+          and caught_chess and caught_score and caught_timeline
+          and caught_legend_status and caught_scale and caught_timeline_data
+          and caught_timeline_proof,
           "white=%s colour=%s scene=%s text=%s land=%s legend=%s digit=%s "
           "frame=%s status=%s rows=%s stale=%s elements=%s nepal=%s "
-          "tile2=%s tile7=%s tile7only=%s arg=%s arghead=%s lines=%s place=%s"
+          "tile2=%s tile7=%s tile7only=%s arg=%s arghead=%s lines=%s place=%s "
+          "chess=%s score=%s timeline=%s legendstatus=%s scale=%s "
+          "timedata=%s timeproof=%s"
           % (caught_white, caught_color, caught_scene, caught_text,
              caught_land, caught_legend, caught_digit, caught_frame,
              caught_status, caught_rows, caught_stale, caught_elements,
              caught_nepal, caught_tile2, caught_tile7, caught_tile7_only,
              caught_arg, caught_arg_head, caught_legend_lines,
-             caught_legend_place))
+             caught_legend_place, caught_chess, caught_score,
+             caught_timeline, caught_legend_status, caught_scale,
+             caught_timeline_data, caught_timeline_proof))
 
 
 def main():
@@ -1345,6 +1613,8 @@ def main():
         check_headline_budget(main_mod, items)
         check_tile_text(main_mod, items)
         check_argentina(items)
+        check_chess(main_mod, items)
+        check_timeline_data()
         check_source_status()
         check_no_failure_markers()
         _buf, log = main_mod.render(items, main_mod.new_canvas())
@@ -1363,6 +1633,8 @@ def main():
         check_pins(pixels, main_mod, items)
         check_legend(pixels, main_mod, items)
         check_status_legend(pixels, main_mod, log)
+        check_timeline(pixels, main_mod, log)
+        check_text_scale(log, main_mod, items)
         check_text_fits(main_mod, log)
         if "--selftest" in sys.argv:
             selftest(pixels, main_mod, items, log)

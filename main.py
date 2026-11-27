@@ -63,25 +63,21 @@ PANEL_X, PANEL_Y, PANEL_W, PANEL_H = 524, 64, 488, 204
 MAP_X0, MAP_Y0, MAP_X1, MAP_Y1 = 532, 88, 1004, 262
 MAP_LAT_TOP, MAP_LAT_BOT = 75.0, -58.0
 
-# Candidate offsets for a pin that cannot use its projected spot.  Rings
-# of 12 px, nearest first; inside a ring, v2's own bias wins (+12/-12),
-# then the flat steps, so a pin walks sideways before it climbs.  Order is
-# fixed, so the layout is deterministic.
-_PIN_BIAS = ((1, -1), (1, 0), (0, -1), (1, 1), (0, 1),
-             (-1, -1), (-1, 0), (-1, 1))
+# Candidate offsets for a pin that cannot use its projected spot: a 4 px
+# grid out to 56 px, nearest first (a square ring, then the exact distance,
+# then horizontal bias).  Fixed order, so two renders always agree.
 PIN_OFFSETS = tuple(sorted(
-    [(dx * 12, dy * 12)
-     for dx in range(-8, 9) for dy in range(-8, 9) if (dx, dy) != (0, 0)],
-    key=lambda o: (max(abs(o[0]), abs(o[1])),
-                   _PIN_BIAS.index((o[0] // 12, o[1] // 12))
-                   if (o[0] // 12, o[1] // 12) in _PIN_BIAS else 9,
-                   abs(o[0]) + abs(o[1]), -o[0], o[1]),
+    [(dx * 4, dy * 4)
+     for dx in range(-14, 15) for dy in range(-14, 15)
+     if (dx, dy) != (0, 0)],
+    key=lambda o: (max(abs(o[0]), abs(o[1])), o[0] * o[0] + o[1] * o[1],
+                   abs(o[1]), -o[0]),
 ))
 
 LIST_XS = (12, 348, 684)
 LIST_Y0 = 704
 LIST_PITCH = 40
-LIST_COL_LEN = (7, 7, 7)
+LIST_COL_LEN = (7, 6, 6)
 
 # 5x7 bitmap font.  Each glyph is seven rows; each row is five bits, the
 # most significant bit being the leftmost column.  Text is drawn in upper
@@ -499,15 +495,14 @@ def pin_on_land(buf, x, y, need=25):
 def pin_layout(featured, buf):
     """Final (rank, x, y) for each featured pin, in rank order.
 
-    A pin keeps its projected city whenever that spot is on drawn land
-    and clear of the pins already placed, which is the case for most of
-    the map.  Europe is only about 30 px wide here, so London, Brussels
+    A pin keeps its projected city whenever that spot is solidly on drawn
+    land and clear of the pins already placed, which is the case for most
+    of the map.  Europe is only about 30 px wide here, so London, Brussels
     and Geneva project within 10 px of each other and Moscow and
-    Savasleyka within 6 px, and those pins have to move.  They move by
-    v2's own rule -- 12 px right and 12 px up per step -- with a
-    south-east retry for the one case v2 never met: a nudge that walks
-    off the coast into open sea.  The order is fixed, so two renders
-    always agree.
+    Savasleyka within 6 px, and those pins have to move.  A pin that
+    cannot use its own spot takes the nearest free spot on solid land, so
+    it stays recognisably over its own city rather than drifting to a
+    neighbour's.  The candidate order is fixed, so two renders agree.
     """
     placed = []
     out = []
@@ -522,37 +517,15 @@ def pin_layout(featured, buf):
             return not any(abs(px - x) < 20 and abs(py - y) < 20
                            for px, py in placed)
 
-        def nudge(dy):
-            x, y = base
-            for _ in range(5):
-                if not any(abs(px - x) < 20 and abs(py - y) < 20
-                           for px, py in placed):
-                    break
-                x += 12
-                y += dy
-            return x, y
-
-        if usable(*base) and pin_on_land(buf, base[0], base[1], 1):
+        if usable(*base) and pin_on_land(buf, base[0], base[1], 100):
             x, y = base
         else:
-            # Up-right first, v2's direction; then down-right, which runs
-            # back over the land; then a plain nearest-land search.
-            x, y = nudge(-12)
-            if not pin_on_land(buf, x, y):
-                fallback = None
-                cx, cy = nudge(12)
-                if pin_on_land(buf, cx, cy):
-                    fallback = (cx, cy)
-                else:
-                    for dx, dy in PIN_OFFSETS:
-                        cx, cy = base[0] + dx, base[1] + dy
-                        if not usable(cx, cy):
-                            continue
-                        if pin_on_land(buf, cx, cy, 60):
-                            fallback = (cx, cy)
-                            break
-                if fallback is not None:
-                    x, y = fallback
+            x, y = base
+            for dx, dy in PIN_OFFSETS:
+                cx, cy = base[0] + dx, base[1] + dy
+                if usable(cx, cy) and pin_on_land(buf, cx, cy, 100):
+                    x, y = cx, cy
+                    break
 
         placed.append((x, y))
         out.append((it["rank"], x, y))

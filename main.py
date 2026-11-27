@@ -120,10 +120,23 @@ DATE_ITEMS = (
     "HOUTHI CLAIM ON RAS TANURA: 25 NOV",
 )
 DATE_TITLE = "DATE CHECK: EVERY STORY IS FROM 26 NOV. LEFT OUT (NOT 26 NOV):"
+# The first two lines have always sat inside the date box.  The status
+# legend has to name CLAIM and ONGOING too, and the two-column layout the
+# brief allows cannot hold them: 598 + 718 = 1316 px against 982 px of
+# box interior.  So the two new lines go in the empty band between the
+# list (ends y 840) and the frame (starts y 872), full width, at the same
+# 14 px size and MUTED colour as the lines inside the box.
 DATE_LEGEND = (
     "OFFICIAL GOV OR INSTITUTION | CONFIRMED 2+ SOURCES",
     "REPORTED 1 OUTLET | CLAIM ONE SIDE | ONGOING STILL UNFOLDING",
 )
+STATUS_LEGEND = (
+    "CLAIM ONE SIDE SAYS SO",
+    "ONGOING STILL DEVELOPING",
+)
+STATUS_LEGEND_Y = 846
+STATUS_LEGEND_X = 12
+STATUS_LEGEND_GAP = 48
 
 # Region names are too wide for a 246 px tile at the 14 px minimum type
 # size, so tiles use these short forms; the hero has room for the full name.
@@ -1280,6 +1293,21 @@ def draw_hero(buf, it):
                     HERO_X + HERO_W - 8)
 
 
+def tile_headline_box(it):
+    """(x offset, width) of a tile headline.
+
+    A tile's headline sits at +8 in a TILE_W-16 column, which holds 19
+    characters.  "KREMLIN ACCUSES KYIV OF WIDENING WAR" splits only as
+    15+20 or 20+15, so its longest line is 20 characters, 238 px: the
+    only box that holds it starts at +6 and runs to the tile's last
+    column.  Any headline that fits the usual column keeps it, so this
+    widens one tile and leaves the other eleven untouched.
+    """
+    if wrap(it["headline"], 2, TILE_W - 16, 2) is not None:
+        return 8, TILE_W - 16
+    return 6, TILE_W - 7
+
+
 def draw_tile(buf, it, x, y):
     color = REGION_COLOR[it["region"]]
     fill_rect(buf, x, y, TILE_W, TILE_H, color)
@@ -1297,11 +1325,12 @@ def draw_tile(buf, it, x, y):
         fail("OVERFLOW %d" % it["id"])
     draw_text(buf, x + 8, y + 76 + (4 - scale) * 7, stat, scale, WHITE)
 
-    lines = wrap(it["headline"], 2, TILE_W - 16, 2)
+    hx, hw = tile_headline_box(it)
+    lines = wrap(it["headline"], 2, hw, 2)
     if lines is None:
         fail("OVERFLOW %d" % it["id"])
     for i, line in enumerate(lines):
-        draw_text(buf, x + 8, y + 106 + i * 18, line, 2, WHITE)
+        draw_text(buf, x + hx, y + 106 + i * 18, line, 2, WHITE)
 
     draw_status_row(buf, it, x + 6, y + 140, x + TILE_W - 4)
 
@@ -1372,6 +1401,29 @@ def date_lines():
     return out
 
 
+def status_legend_lines():
+    """(text, x, y) for the two status lines above the date box.
+
+    The band between the list and the frame is 32 px, one 14 px row plus
+    the 20 px pitch, so the two lines sit side by side in two columns
+    rather than stacked.  Each keeps the 14 px size and MUTED colour of
+    the legend lines inside the box.
+    """
+    out = []
+    x = STATUS_LEGEND_X
+    for text in STATUS_LEGEND:
+        out.append((text, x, STATUS_LEGEND_Y))
+        x += text_width(text, 2) + STATUS_LEGEND_GAP
+    return out
+
+
+def draw_status_legend(buf):
+    for text, x, y in status_legend_lines():
+        draw_text(buf, x, y, text, 2, MUTED)
+        if x + text_width(text, 2) > DATE_X + DATE_W - 6:
+            fail("OVERFLOW status legend")
+
+
 def draw_date_check(buf):
     stroke_rect(buf, DATE_X, DATE_Y, DATE_W, DATE_H, RED, 2)
     for text, x, y, role in date_lines():
@@ -1405,7 +1457,10 @@ def load_news():
         if it.get("status") not in STATUSES:
             fail("STATUS %d %s" % (it["id"], it.get("status")))
         if it["featured"]:
-            width = 292 if it["rank"] == 1 else TILE_W - 16
+            if it["rank"] == 1:
+                width = 292
+            else:
+                _hx, width = tile_headline_box(it)
             lines = wrap(it["headline"], 2, width, 2)
             if lines is None or sum(len(line) for line in lines) > 36:
                 fail("OVERFLOW %d headline" % it["id"])
@@ -1449,6 +1504,7 @@ def render(items, buf=None, text=True):
             draw_tile(buf, it, TILE_XS[idx % 4], TILE_YS[idx // 4])
         draw_map(buf, items)
         draw_list(buf, rest)
+        draw_status_legend(buf)
         draw_date_check(buf)
         return buf, list(TEXT_LOG or ())
     finally:

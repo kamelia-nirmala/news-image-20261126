@@ -39,6 +39,8 @@ SMOKE = (0xB9, 0xC2, 0xCE)
 WATER = (0x35, 0x6E, 0xA8)
 SAND = (0xD8, 0xB4, 0x6E)
 RED = (0xE8, 0x3B, 0x3B)
+BRICK = (0x9C, 0x36, 0x2E)
+ROOF = (0x2F, 0x7A, 0x4F)
 
 REGION_ORDER = [
     "North America",
@@ -105,17 +107,17 @@ MAP_LAT_TOP, MAP_LAT_BOT = 75.0, -58.0
 LIST_XS = (12, 346, 680)
 LIST_Y0 = 726
 LIST_PITCH = 20
-LIST_ROWS = 7
+LIST_ROWS = 6
 LIST_COL_W = 324
 
 DATE_X, DATE_Y, DATE_W, DATE_H = 12, 872, 1000, 146
 DATE_ITEMS = (
+    "NIGER ATTACK: 24-25 NOV",
+    "US MEASLES CDC TOTAL: 25 NOV",
+    "FCC SPACEX 1M SATS: 25 NOV",
+    "TRUMP NATO STATEMENT: 25 NOV",
     "HORMUZ TANKER HITS MINE: 24-25 NOV",
     "HOUTHI CLAIM ON RAS TANURA: 25 NOV",
-    "KYIV BALLISTIC STRIKE: NIGHT OF 25 NOV",
-    "UN EBOLA EVACUATION: 24-25 NOV",
-    "US BIRTHRIGHT SECOND JUDGE: 24-25 NOV",
-    "APPLE / MINIMAX: 24-25 NOV",
 )
 DATE_TITLE = "DATE CHECK: EVERY STORY IS FROM 26 NOV. LEFT OUT (NOT 26 NOV):"
 DATE_LEGEND = (
@@ -480,6 +482,48 @@ class Scene(object):
             self.disc(u + dx * rpx / self.w, v + dy * rpx / self.h,
                       dot, color)
 
+    # The three scenes added in v6 are written in literal pixel
+    # coordinates inside the box, so they get pixel-space primitives
+    # that take 0..w / 0..h offsets from the box's top-left corner.
+    def box_px(self, x, y, w, h, color):
+        self.box(self.x + x, self.y + y, w, h, color)
+
+    def disc_px(self, cx, cy, r, color):
+        r = max(1, int(r + 0.5))
+        cx, cy = self.x + cx, self.y + cy
+        for dy in range(-r, r + 1):
+            yy = cy + dy
+            if yy < self.y or yy >= self.y + self.h:
+                continue
+            span = int((r * r - dy * dy) ** 0.5)
+            x0 = max(self.x, cx - span)
+            x1 = min(self.x + self.w - 1, cx + span)
+            if x1 >= x0:
+                fill_rect(self.buf, x0, yy, x1 - x0 + 1, 1, color)
+
+    def oval_px(self, cx, cy, rx, ry, color):
+        cx, cy = self.x + cx, self.y + cy
+        for dy in range(-ry, ry + 1):
+            yy = cy + dy
+            if yy < self.y or yy >= self.y + self.h:
+                continue
+            span = int(rx * (1.0 - dy * dy / float(ry * ry)) ** 0.5)
+            x0 = max(self.x, cx - span)
+            x1 = min(self.x + self.w - 1, cx + span)
+            if x1 >= x0:
+                fill_rect(self.buf, x0, yy, x1 - x0 + 1, 1, color)
+
+    def poly_px(self, pts, color):
+        fill_poly(self.buf, [(self.x + a, self.y + b) for a, b in pts],
+                  color, self.clip)
+
+    def star_px(self, cx, cy, r, color):
+        cx, cy = self.x + cx, self.y + cy
+        pts = [(cx + dx * (r if i % 2 == 0 else r * 0.42),
+                cy + dy * (r if i % 2 == 0 else r * 0.42))
+               for i, (dx, dy) in enumerate(RING8)]
+        fill_poly(self.buf, pts, color, self.clip)
+
     def star(self, u, v, rpx, color):
         cx, cy = self.X(u), self.Y(v)
         pts = []
@@ -688,6 +732,81 @@ def scene_court(sc):
     sc.poly([(0.75, 0.06), (0.93, 0.12), (0.75, 0.20)], RED)
 
 
+def scene_kremlin(sc):
+    """A brick wall, three green-roofed towers, a red star, two ships.
+
+    Drawn in literal pixels for the 238x50 tile box: the wall is the
+    bottom 14 px, so it takes the place of the usual 12 px ground strip.
+    """
+    wall_top = 36
+    sc.box_px(0, wall_top, 238, 50 - wall_top, BRICK)
+    sc.box_px(0, wall_top, 238, 2, shade(BRICK, 1.18))
+    for mx in range(0, 238, 16):
+        sc.box_px(mx, wall_top + 4, 1, 10, shade(BRICK, 0.72))
+
+    def tower(cx, width, roof_h, body_h):
+        x0 = cx - width // 2
+        top = wall_top - body_h
+        sc.box_px(x0, top, width, body_h, tint(BRICK, 0.10))
+        sc.box_px(x0 + 2, top + 4, 3, 4, INK)
+        sc.box_px(x0 + width - 6, top + 4, 3, 4, INK)
+        sc.poly_px([(x0 - 3, top), (cx, top - roof_h), (x0 + width + 3, top)],
+                   ROOF)
+        sc.box_px(cx - 1, top - roof_h + 3, 2, roof_h - 3, shade(ROOF, 0.78))
+        return top - roof_h
+
+    # Towers stand 26, 36, 26 px tall (body plus roof) above the wall;
+    # the middle one reaches the top edge, since 14 + 36 = 50.
+    tower(60, 22, 10, 16)
+    apex = tower(119, 24, 12, 24)
+    tower(178, 22, 10, 16)
+    sc.star_px(119, apex + 5, 4, RED)
+
+    # Harbour at the right of the wall, with two separate 20x6 hulls.
+    sc.box_px(192, wall_top - 8, 44, 8, WATER)
+    for hx in (194, 217):
+        sc.box_px(hx, wall_top - 7, 20, 6, SMOKE)
+        sc.box_px(hx + 13, wall_top - 10, 4, 3, shade(SMOKE, 0.82))
+        sc.box_px(hx + 4, wall_top - 5, 3, 3, INK)
+
+
+def scene_summit(sc):
+    """A cream oval table, eight chairs, three gold coins, two flags."""
+    cx, cy = 119, 27
+    sc.oval_px(cx, cy, 55, 12, CREAM)
+    for dx, dy in RING8:
+        sc.disc_px(int(cx + dx * 66), int(cy + dy * 19), 2.5, WHITE)
+    # Three r=6 coins stacked in a pile: the front one is drawn last.
+    for i in range(3):
+        yy = cy + 4 - i * 5
+        sc.disc_px(cx, yy, 6, shade(GOLD, 0.82))
+        sc.disc_px(cx, yy, 5, GOLD)
+        sc.disc_px(cx, yy - 1, 2, tint(GOLD, 0.45))
+    for fx in (22, 202):
+        sc.box_px(fx + 6, 8, 2, 24, SMOKE)
+        sc.box_px(fx, 10, 14, 10, tint(WATER, 0.14))
+        for dx, dy in RING8:
+            sc.disc_px(fx + 7 + int(dx * 3.4), 15 + int(dy * 2.4), 1, GOLD)
+
+
+def scene_servers(sc):
+    """Two server cabinets with gold LEDs, and a GPU card in front."""
+    for x0 in (12, 70):
+        sc.box_px(x0, 8, 54, 38, shade(CREAM, 0.86))
+        sc.box_px(x0, 8, 54, 3, CREAM)
+        for row in range(4):
+            sy = 14 + row * 8
+            sc.box_px(x0 + 5, sy, 34, 5, INK)
+            sc.box_px(x0 + 42, sy + 1, 3, 3, GOLD)
+            sc.box_px(x0 + 47, sy + 1, 3, 3, GOLD if row % 2 == 0 else SMOKE)
+    sc.box_px(136, 12, 96, 30, CREAM)
+    sc.box_px(148, 18, 40, 18, INK)
+    sc.box_px(152, 22, 32, 10, shade(GOLD, 0.55))
+    for i in range(10):
+        sc.box_px(140 + i * 9, 34, 5, 4, GOLD)
+    sc.box_px(136, 12, 4, 30, shade(CREAM, 0.62))
+
+
 SCENES = {
     "ebola": scene_ebola,
     "niger": scene_niger,
@@ -702,6 +821,9 @@ SCENES = {
     "mumbai": scene_mumbai,
     "treaty": scene_treaty,
     "court": scene_court,
+    "kremlin": scene_kremlin,
+    "summit": scene_summit,
+    "servers": scene_servers,
 }
 
 
@@ -909,6 +1031,18 @@ PIN_R = 8
 PIN_MIN_GAP = 16
 PIN_SHIFT = 12
 
+# The v6 map packs five European pins into about 60 px, so pins are
+# nudged from their true projection by at most PIN_SHIFT px, always onto
+# land and, for Europe, never below 44N (further south the map's Europe
+# polygon is the Maghreb).  Measured shifts from the 27 Nov 2026 render:
+#   pin  2 Moscow   10.0 -> (807,103)   pin  7 Brussels  6.7 -> (776,102)
+#   pin 10 Geneva   11.2 -> (787,114)   pin 12 London    5.8 -> (762,110)
+#   pin  5 Nepal     5.7   pin 8 Singapore 8.9   pin 13 Myanmar 5.0
+#   pin  3 Jakarta   1.0   pins 1,4,6,9,11 sit on their true coordinates
+# Moscow and Kharkiv project 6 px apart, at (817,103) and (823,103), so
+# Moscow moves west to (807,103); the chess pin at Geneva slides to
+# (787,114) and Brussels to (776,102) to clear London at (762,110).
+
 
 def _pin_offsets():
     out = []
@@ -942,6 +1076,12 @@ def _pin_candidates(items):
             # A US story must never be nudged into Canada.
             if it["region"] == "North America" and lat > 49.5:
                 continue
+            # A nudged European pin must stay in Europe, so the chess pin
+            # cannot slide south into Algeria to find room.  44N is the
+            # floor: below it the map's Europe polygon is the Maghreb.
+            if it["region"] == "Europe" and not (
+                    -12.0 <= lon <= 45.0 and 44.0 <= lat <= 71.5):
+                continue
             opts.append((x, y))
         cand.append((it, bx, by, opts))
     return cand
@@ -950,36 +1090,48 @@ def _pin_candidates(items):
 def pin_layout(items):
     """One (x, y) per featured item: nearest on-land spot, 16 px apart.
 
-    Depth-first over the rank order, nearest offset first, so the result
-    is a pure function of the data.  Non-featured stories are returned as
-    small dots that stay clear of every numbered pin.
+    With Moscow (rank 2) and Kharkiv (rank 6) projecting 6 px apart the
+    plain rank-order depth-first search blew up, so pins are placed
+    most-constrained-first (fewest on-land offsets inside the 12 px
+    budget) and every step forward-checks that the pins still to come
+    keep a legal slot.  Ties break on rank, so the result stays a pure
+    function of the data.
     """
     cand = _pin_candidates(items)
+    order = sorted(range(len(cand)),
+                   key=lambda i: (len(cand[i][3]), cand[i][0]["rank"]))
     placed = []
     chosen = [None] * len(cand)
     budget = [200000]
 
-    def solve(i):
-        if i == len(cand):
+    def free(x, y):
+        for px, py in placed:
+            if (x - px) ** 2 + (y - py) ** 2 < PIN_MIN_GAP ** 2:
+                return False
+        return True
+
+    def solve(k):
+        if k == len(order):
             return True
-        _, _, _, opts = cand[i]
-        for x, y in opts:
+        i = order[k]
+        for x, y in cand[i][3]:
             budget[0] -= 1
             if budget[0] < 0:
                 return False
-            ok = True
-            for px, py in placed:
-                if (x - px) ** 2 + (y - py) ** 2 < PIN_MIN_GAP ** 2:
-                    ok = False
-                    break
-            if not ok:
+            if not free(x, y):
                 continue
             placed.append((x, y))
             chosen[i] = (x, y)
-            if solve(i + 1):
+            # Forward check: every pin still to come must keep a slot.
+            alive = True
+            for j in order[k + 1:]:
+                if not any(free(ox, oy) for ox, oy in cand[j][3]):
+                    alive = False
+                    break
+            if alive and solve(k + 1):
                 return True
             placed.pop()
-        chosen[i] = None
+            chosen[i] = None
         return False
 
     if not solve(0):
@@ -1137,12 +1289,13 @@ def draw_tile(buf, it, x, y):
     draw_scene(buf, it, x + SCENE_X, y + SCENE_Y, SCENE_W, SCENE_H)
 
     stat = it["big_stat"]
-    # Scale 4 (28 px tall, y 76..104) as specified; the widest stat is
-    # "30+ DEAD" at 195 px inside the 229 px tile column.
-    scale = 4
+    # Scale 4 (28 px tall, y 76..104) as specified.  "213 MISSING" is
+    # 236 px wide and will not fit the 229 px column, so that one tile
+    # falls back to scale 3, which the earlier brief allowed.
+    scale = 4 if text_width(stat, 4) <= TILE_W - 16 else 3
     if text_width(stat, scale) > TILE_W - 16:
         fail("OVERFLOW %d" % it["id"])
-    draw_text(buf, x + 8, y + 76, stat, scale, WHITE)
+    draw_text(buf, x + 8, y + 76 + (4 - scale) * 7, stat, scale, WHITE)
 
     lines = wrap(it["headline"], 2, TILE_W - 16, 2)
     if lines is None:
@@ -1187,7 +1340,7 @@ def draw_legend(buf, items):
 
 
 def list_rows(items):
-    """(item, text, x, y) for the 21 single-line stories, column by column."""
+    """(item, text, x, y) for the 18 single-line stories, column by column."""
     out = []
     for idx, it in enumerate(items):
         col = idx // LIST_ROWS
@@ -1258,6 +1411,8 @@ def load_news():
                 fail("OVERFLOW %d headline" % it["id"])
 
     featured, rest = split_items(items)
+    if len(rest) != LIST_ROWS * len(LIST_XS):
+        fail("LIST %d rows for %d columns" % (len(rest), len(LIST_XS)))
     return items, featured, rest
 
 

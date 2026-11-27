@@ -2,8 +2,12 @@
 
 Standard library only, no network.  Every check prints PASS or FAIL and the
 script ends with a single overall verdict.  Run with --selftest to prove the
-pixel checks actually bite: it tampers with two rendered copies and requires
-the checks to reject them.
+pixel checks actually bite: it tampers with rendered copies and requires the
+checks to reject them.
+
+    python3 check.py              all checks
+    python3 check.py --selftest   also prove the checks reject tampers
+    python3 check.py --ascii 3    print illustration box 3 as an ASCII grid
 """
 
 import ast
@@ -41,16 +45,20 @@ BG = (0x0B, 0x12, 0x20)
 LAND = (0x3A, 0x55, 0x78)
 COAST = (0x7C, 0x9C, 0xC4)
 WHITE = (0xFF, 0xFF, 0xFF)
+RED = (0xE8, 0x3B, 0x3B)
+PIN_INK = (0x10, 0x16, 0x22)
 
-ICON_MIN_INK = 0.12
-PIN_MIN_GAP = 12
-ICON_HERO = 120
-ICON_TILE = 56
-ICON_INSET = 8
+STATUS_VALUES = ("OFFICIAL", "CONFIRMED", "REPORTED", "CLAIM", "ONGOING")
+PIN_MIN_GAP = 16
+SCENE_MIN_COLOURS = 4
+SCENE_MIN_DIFF = 0.40
+LIST_LINES = 21
+LIST_COL_W = 324
 
 HERO = (12, 64)
 TILE_XS = (12, 263, 514, 765)
-TILE_YS = (276, 410, 544)
+TILE_YS = (220, 382, 544)
+
 CITIES = [
     ("Washington", -77.0, 38.9), ("Sao Paulo", -46.6, -23.5),
     ("London", -0.1, 51.5), ("Cairo", 31.2, 30.0),
@@ -65,12 +73,15 @@ CITIES = [
 # A featured stat must carry a number, or be one of these verbs.
 STAT_WORDS = {"WARNS", "TARIFFS", "HALTED", "REJECTS"}
 
-# Headlines sometimes spell a number out; the stat may still show the digit.
 NUMBER_WORDS = {
     1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six",
     7: "seven", 8: "eight", 9: "nine", 10: "ten", 12: "twelve",
     20: "twenty", 30: "thirty",
 }
+
+# Every scene is one of these; news.json names one per featured story.
+SCENES = ("ebola", "niger", "mine", "gaza", "nepal", "jets", "measles",
+          "satellites", "parade", "chess", "mumbai", "treaty", "court")
 
 results = []
 
@@ -190,29 +201,51 @@ def check_imports():
     check("imports are stdlib only", not bad, ", ".join(sorted(bad)))
 
 
+def load_news():
+    return json.load(open(NEWS, encoding="utf-8"))
+
+
 def check_news():
-    items = json.load(open(NEWS, encoding="utf-8"))
+    items = load_news()
     problems = []
-    if len(items) != 36:
+    if len(items) != 34:
         problems.append("count=%d" % len(items))
     ids = [i["id"] for i in items]
-    if len(set(ids)) != 36:
+    if len(set(ids)) != len(ids):
         problems.append("duplicate ids")
+    if 21 in ids or 30 in ids:
+        problems.append("dropped id 21/30 still present")
     for it in items:
         if len(it["headline"]) > 44:
-            problems.append("id %d headline %d chars" % (it["id"], len(it["headline"])))
+            problems.append("id %d headline %d chars"
+                            % (it["id"], len(it["headline"])))
         if it["region"] not in REGIONS:
             problems.append("id %d region %s" % (it["id"], it["region"]))
         if it.get("date") != "2026-11-26":
             problems.append("id %d date" % it["id"])
         if not it.get("source_url"):
             problems.append("id %d url" % it["id"])
+        src = it.get("source", "")
+        if not src or len(src) > 8 or src != src.upper():
+            problems.append("id %d source %r" % (it["id"], src))
+        if it.get("status") not in STATUS_VALUES:
+            problems.append("id %d status %r" % (it["id"], it.get("status")))
         if "lat" not in it or "lon" not in it:
             problems.append("id %d geo" % it["id"])
         elif not (-58 <= it["lat"] <= 75):
             problems.append("id %d lat %s" % (it["id"], it["lat"]))
         if not -180 <= it.get("lon", 0) <= 180:
             problems.append("id %d lon" % it["id"])
+        if it.get("featured"):
+            if it.get("scene") not in SCENES:
+                problems.append("id %d scene %r" % (it["id"], it.get("scene")))
+        else:
+            short = it.get("short", "")
+            if not short:
+                problems.append("id %d no short" % it["id"])
+            elif len(short) > 24:
+                problems.append("id %d short %d chars"
+                                % (it["id"], len(short)))
     used = {i["region"] for i in items}
     if len(used) < 6:
         problems.append("only %d regions" % len(used))
@@ -222,13 +255,21 @@ def check_news():
     ranks = sorted(i.get("rank") for i in feat)
     if ranks != list(range(1, 14)):
         problems.append("ranks=%s" % ranks)
-    for it in feat:
-        stat = it.get("big_stat", "")
-        if not stat or len(stat) > 11:
-            problems.append("id %d stat %r" % (it["id"], stat))
+    check("news.json is well formed", not problems, "; ".join(problems[:4]))
+
+
+def check_stats():
+    """Every featured tile needs a number or one of the four allowed verbs."""
+    items = load_news()
+    bad = []
+    for it in items:
+        if not it.get("featured"):
             continue
-        # The number in the stat must come from that story's own headline,
-        # counting spelled-out numbers ("nine") and "1M" for "1 million".
+        stat = it.get("big_stat", "").upper()
+        has_digit = any(ch.isdigit() for ch in stat)
+        if not has_digit and stat not in STAT_WORDS:
+            bad.append("id %d %r" % (it["id"], stat))
+            continue
         head = it["headline"].lower().replace(",", "")
         for n in stat.replace(",", "").split():
             core = n.strip("+%$").lower()
@@ -239,23 +280,67 @@ def check_news():
             if core.isdigit() and NUMBER_WORDS.get(int(core)) in head.split():
                 continue
             if core and core not in head:
-                problems.append("id %d stat %r not in headline" % (it["id"], stat))
+                bad.append("id %d stat %r not in headline"
+                           % (it["id"], stat))
                 break
-    check("news.json is well formed", not problems, "; ".join(problems[:4]))
+    check("featured stats are numbers or verbs", not bad, ", ".join(bad))
 
 
-def check_stats():
-    """Every featured tile needs a number or one of the four allowed verbs."""
-    items = json.load(open(NEWS, encoding="utf-8"))
+def check_headline_budget(main, items):
+    """A featured headline is two 14 px lines and at most 36 characters."""
     bad = []
     for it in items:
         if not it.get("featured"):
             continue
-        stat = it.get("big_stat", "").upper()
-        has_digit = any(ch.isdigit() for ch in stat)
-        if not has_digit and stat not in STAT_WORDS:
-            bad.append("id %d %r" % (it["id"], stat))
-    check("featured stats are numbers or verbs", not bad, ", ".join(bad))
+        width = 292 if it["rank"] == 1 else main.TILE_W - 16
+        lines = main.wrap(it["headline"], 2, width, 2)
+        if lines is None:
+            bad.append("id %d will not wrap" % it["id"])
+            continue
+        total = sum(len(line) for line in lines)
+        if total > 36:
+            bad.append("id %d %d chars" % (it["id"], total))
+    check("featured headlines fit two lines and 36 characters", not bad,
+          ", ".join(bad[:4]))
+
+
+def check_source_status():
+    """Each source name is grounded in its URL or date_evidence, and the
+    status is one the data supports."""
+    items = load_news()
+    bad = []
+    for it in items:
+        host = it["source_url"].split("/")[2].lower()
+        letters = "".join(ch for ch in it["source"].lower() if ch.isalnum())
+        hay = "".join(ch for ch in host if ch.isalnum())
+        evidence = it.get("date_evidence", "").lower()
+        # Either the short name is a subsequence of the domain, or the
+        # quote already names the agency in brackets.
+        pos = 0
+        for ch in letters:
+            pos = hay.find(ch, pos)
+            if pos < 0:
+                break
+            pos += 1
+        grounded = pos >= 0 and letters and pos > 0
+        if not grounded and letters not in evidence:
+            bad.append("id %d %s not in %s" % (it["id"], it["source"], host))
+    # A single outlet can only be CONFIRMED if it cites two sources; the
+    # data has no such case, so no item may claim it.
+    confirmed = [i["id"] for i in items if i["status"] == "CONFIRMED"]
+    if confirmed:
+        bad.append("CONFIRMED without a second source: %s"
+                   % ",".join(str(i) for i in confirmed))
+    check("every source name is grounded in its URL or quote",
+          not bad, ", ".join(bad[:4]))
+
+
+def check_no_failure_markers():
+    proc = run_main(os.path.join(tempfile.gettempdir(), "news26_marker"))
+    text = (proc.stdout + proc.stderr).upper()
+    bad = "OVERFLOW" in text or "NOGLYPH" in text
+    check("no OVERFLOW or NOGLYPH", proc.returncode == 0 and not bad,
+          (proc.stderr.strip() or "exit %d" % proc.returncode)[:120])
 
 
 def color_mismatches(pixels, items):
@@ -274,12 +359,12 @@ def color_mismatches(pixels, items):
 
 def white_shortfalls(pixels):
     bad = []
-    if count_white(pixels, HERO[0], HERO[1], 500, 204) < 300:
+    if count_white(pixels, HERO[0], HERO[1], 500, 150) < 300:
         bad.append("hero")
     for idx in range(12):
         x = TILE_XS[idx % 4]
         y = TILE_YS[idx // 4]
-        if count_white(pixels, x, y, 246, 128) < 300:
+        if count_white(pixels, x, y, 245, 156) < 300:
             bad.append("tile %d" % (idx + 2))
     return bad
 
@@ -292,7 +377,6 @@ def check_colors(pixels, items):
 def check_white(pixels):
     bad = white_shortfalls(pixels)
     check("hero and tiles carry white ink", not bad, ", ".join(bad))
-
 
 
 def load_landmasses():
@@ -323,20 +407,8 @@ def inside_any(polys, lon, lat):
     return False
 
 
-def load_landmasses():
-    """Read LANDMASSES out of main.py so there is a single source of truth."""
-    with open(MAIN, "r", encoding="utf-8") as fh:
-        tree = ast.parse(fh.read(), filename=MAIN)
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "LANDMASSES":
-                    return ast.literal_eval(node.value)
-    raise ValueError("LANDMASSES not found in main.py")
-
-
 def load_main_module():
-    """Import main.py so the checks use its projection and pin layout."""
+    """Import main.py so the checks use its projection and layout."""
     import importlib.util
     spec = importlib.util.spec_from_file_location("news26_main", MAIN)
     module = importlib.util.module_from_spec(spec)
@@ -344,166 +416,224 @@ def load_main_module():
     return module
 
 
-def icon_boxes(main, items):
-    """(label, x, y, w, h) for every icon plate, straight from main.py."""
-    boxes = []
-    hero = [i for i in items if i["featured"] and i["rank"] == 1][0]
-    boxes.append(("hero",) + main.icon_box(hero, main.HERO_X, main.HERO_Y))
-    tiles = sorted([i for i in items if i["featured"] and i["rank"] != 1],
-                   key=lambda i: i["rank"])
-    for idx, it in enumerate(tiles):
-        x = main.TILE_XS[idx % 4]
-        y = main.TILE_YS[idx // 4]
-        boxes.append(("tile %d" % it["rank"],) + main.icon_box(it, x, y))
-    return boxes
-
-
-def plate_interior(pixels, x, y, w, h):
-    """Modal colour of a plate's interior: its fill, ignoring the border."""
+def scene_stats(pixels, x, y, w, h):
+    """(distinct colours, fraction of pixels off the modal colour, modal)."""
     counts = {}
-    for yy in range(y + 3, y + h - 3):
-        for xx in range(x + 3, x + w - 3):
+    for yy in range(y, y + h):
+        for xx in range(x, x + w):
             got = pixel(pixels, xx, yy)
             counts[got] = counts.get(got, 0) + 1
-    return max(counts.items(), key=lambda kv: kv[1])[0]
+    base = max(counts.items(), key=lambda kv: kv[1])[0]
+    diff = sum(n for c, n in counts.items() if c != base)
+    return len(counts), diff / float(w * h), base
 
 
-def pictogram_shortfalls(pixels, main, items):
-    """Plates whose pictogram covers less than 12% of the plate."""
-    short = []
-    for label, x, y, w, h in icon_boxes(main, items):
-        fill = plate_interior(pixels, x, y, w, h)
-        marks = 0
-        for yy in range(y + 2, y + h - 2):
-            for xx in range(x + 2, x + w - 2):
-                if pixel(pixels, xx, yy) != fill:
-                    marks += 1
-        frac = marks / float(w * h)
-        if frac < ICON_MIN_INK:
-            short.append("%s %.1f%%" % (label, frac * 100))
-    return short
+def scene_shortfalls(pixels, main, items):
+    bad = []
+    for label, x, y, w, h in main.scene_box(items):
+        colours, diff, _base = scene_stats(pixels, x, y, w, h)
+        if colours < SCENE_MIN_COLOURS:
+            bad.append("%s %d colours" % (label, colours))
+        elif diff < SCENE_MIN_DIFF:
+            bad.append("%s %.0f%% off base" % (label, diff * 100))
+    return bad
 
 
-def check_icons(pixels, main, items):
-    """Every plate must be mostly drawn on, and carry no text."""
-    boxes = icon_boxes(main, items)
-    thin = []
-    for label, x, y, w, h in boxes:
-        ink = 0
-        for yy in range(y, y + h):
-            for xx in range(x, x + w):
-                if pixel(pixels, xx, yy) != BG:
-                    ink += 1
-        frac = ink / float(w * h)
-        if frac < ICON_MIN_INK:
-            thin.append("%s %.1f%%" % (label, frac * 100))
-    check("icon plates are at least 12%% drawn", not thin, ", ".join(thin))
+def check_scenes(pixels, main, items):
+    """Every illustration box must be a drawn scene, not a flat plate."""
+    bad = scene_shortfalls(pixels, main, items)
+    check("illustration boxes carry %d+ colours and %d%%+ off base"
+          % (SCENE_MIN_COLOURS, int(SCENE_MIN_DIFF * 100)),
+          not bad, ", ".join(bad[:4]))
 
-    # Ink that is not the plate fill or its border: that is the pictogram.
-    drawn = pictogram_shortfalls(pixels, main, items)
-    check("icon pictograms are at least 12%% ink", not drawn, ", ".join(drawn))
 
-    # A pictogram is white plus the plate accent; body text is pure white
-    # too, so overlap is proved by re-rendering the text alone onto a blank
-    # canvas and requiring that canvas to be empty inside every plate.
-    tbuf = bytearray(1024 * 1024 * 3)
-    for it in items:
-        if not it["featured"]:
-            continue
-        if it["rank"] == 1:
-            main.draw_text(tbuf, 24, 108, it["big_stat"],
-                           main.fit_scale(it["big_stat"], main.HERO_STAT_W,
-                                          10, 6), WHITE)
-            for i, line in enumerate(main.wrap(it["headline"], 3, 476, 2)):
-                main.draw_text(tbuf, 24, 192 + i * 26, line, 3, WHITE)
-        else:
-            idx = it["rank"] - 2
-            tx = main.TILE_XS[idx % 4]
-            ty = main.TILE_YS[idx // 4]
-            main.draw_text(tbuf, tx + 8, ty + 34, it["big_stat"],
-                           main.fit_scale(it["big_stat"], main.TILE_STAT_W,
-                                          5, 3), WHITE)
-            for i, line in enumerate(main.wrap(it["headline"], 2,
-                                               main.TILE_W - 16, 2)):
-                main.draw_text(tbuf, tx + 8, ty + 78 + i * 16, line, 2, WHITE)
+def text_boxes(log):
+    """(text, x, y, w, h) for every drawn string, from main's own log."""
+    return [(text, x, y, 6 * scale * len(text) - scale, 7 * scale)
+            for text, x, y, scale, _colour in log]
+
+
+def overlaps(a, b):
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah
+
+
+def text_in_scenes(main, items, log, pixels=None):
+    """Strings, and then pixels, that land inside an illustration box."""
+    boxes = main.scene_box(items)
     hits = []
-    for label, x, y, w, h in boxes:
-        n = 0
-        for yy in range(y, y + h):
-            for xx in range(x, x + w):
-                i = (yy * 1024 + xx) * 3
-                if tbuf[i] or tbuf[i + 1] or tbuf[i + 2]:
-                    n += 1
-        if n:
-            hits.append("%s %dpx" % (label, n))
-    check("no text pixels inside an icon plate", not hits, ", ".join(hits[:4]))
+    for text, x, y, w, h in text_boxes(log):
+        for label, sx, sy, sw, sh in boxes:
+            if overlaps((x, y, w, h), (sx, sy, sw, sh)):
+                hits.append("%s in %s" % (text[:14], label))
+    if pixels is not None:
+        plain, _ = main.render(items, main.new_canvas(), text=False)
+        for label, sx, sy, sw, sh in boxes:
+            for yy in range(sy, sy + sh):
+                for xx in range(sx, sx + sw):
+                    i = (yy * 1024 + xx) * 3
+                    if (pixels[i], pixels[i + 1], pixels[i + 2]) != \
+                            (plain[i], plain[i + 1], plain[i + 2]):
+                        hits.append("%s px %d,%d" % (label, xx, yy))
+                        break
+                else:
+                    continue
+                break
+    return hits
 
-    # Text inside a plate would be pure white glyph pixels; the pictograms
-    # use white too, so the test is run against the layout instead: no
-    # text box may overlap a plate.
-    overlaps = []
-    hero = [i for i in items if i["featured"] and i["rank"] == 1][0]
-    hx, hy, hw, hh = main.icon_box(hero, main.HERO_X, main.HERO_Y)
-    stat_w = main.text_width(hero["big_stat"],
-                             main.fit_scale(hero["big_stat"],
-                                            main.HERO_STAT_W, 10, 6))
-    if 24 + stat_w > hx:
-        overlaps.append("hero stat")
-    if 24 + main.text_width(hero["region"], 2) > hx and 80 < hy + hh:
-        overlaps.append("hero label")
-    for idx, it in enumerate(sorted([i for i in items
-                                     if i["featured"] and i["rank"] != 1],
-                                    key=lambda i: i["rank"])):
-        tx = main.TILE_XS[idx % 4]
-        ty = main.TILE_YS[idx // 4]
-        bx, by, bw, bh = main.icon_box(it, tx, ty)
-        scale = main.fit_scale(it["big_stat"], main.TILE_STAT_W, 5, 3)
-        if tx + 8 + main.text_width(it["big_stat"], scale) > bx:
-            overlaps.append("tile %d stat" % it["rank"])
-        if tx + 46 + main.text_width(main.SHORT_REGION[it["region"]], 2) > bx:
-            overlaps.append("tile %d label" % it["rank"])
-        lines = main.wrap(it["headline"], 2, main.TILE_W - 16, 2) or []
-        for i in range(len(lines)):
-            if ty + 78 + i * 16 < by + bh:
-                overlaps.append("tile %d headline" % it["rank"])
-    check("no text runs into an icon plate", not overlaps,
-          ", ".join(sorted(set(overlaps))))
+
+def check_no_text_in_scenes(pixels, main, items, log):
+    hits = text_in_scenes(main, items, log, pixels)
+    check("no text pixels inside an illustration box", not hits,
+          ", ".join(hits[:4]))
+
+
+def status_problems(main, items, log):
+    """Every hero and tile needs a valid status pill plus its source name."""
+    problems = []
+    feat = {i["rank"]: i for i in items if i.get("featured")}
+    pills = [(x, y, text) for text, x, y, scale, _c in log
+             if text.upper() in STATUS_VALUES]
+    for label, x, y, w, h in main.status_boxes(items):
+        rank = 1 if label == "hero" else int(label.split()[1])
+        it = feat[rank]
+        if it["status"] not in STATUS_VALUES:
+            problems.append("%s bad status" % label)
+            continue
+        same_row = [p for p in pills if abs(p[1] - y) <= 2]
+        if not same_row:
+            problems.append("%s no pill at y=%d" % (label, y))
+        else:
+            px, py, pt = min(same_row, key=lambda p: abs(p[0] - x))
+            if pt != it["status"]:
+                problems.append("%s pill %r" % (label, pt))
+            if abs(px - (x + 3)) > 2:
+                problems.append("%s pill x=%d" % (label, px))
+        src = [b for b in text_boxes(log) if b[0] == it["source"]
+               and abs(b[2] - y) <= 2]
+        if not src:
+            problems.append("%s no source %s" % (label, it["source"]))
+        else:
+            right = (x - 6) + (main.HERO_W if label == "hero"
+                               else main.TILE_W)
+            if src[0][1] + src[0][3] > right:
+                problems.append("%s source to %d" % (label,
+                                                     src[0][1] + src[0][3]))
+    return problems
+
+
+def check_status_rows(main, items, log):
+    bad = status_problems(main, items, log)
+    check("every hero and tile has a status pill and source", not bad,
+          ", ".join(bad[:4]))
+
+
+def date_problems(pixels, main, log):
+    x, y, w, h = main.DATE_X, main.DATE_Y, main.DATE_W, main.DATE_H
+    bad = []
+    if pixel(pixels, x + 1, y + 1) != RED:
+        bad.append("frame not red")
+    if pixel(pixels, x + w - 2, y + h - 2) != RED:
+        bad.append("frame corner open")
+    inside = []
+    for text, tx, ty, tw, th in text_boxes(log):
+        if x <= tx < x + w and y <= ty < y + h:
+            inside.append(text)
+            if tx + tw > x + w - 4 or ty + th > y + h - 4:
+                bad.append("%s leaves the frame" % text[:14])
+    for want in main.DATE_ITEMS + (main.DATE_TITLE,) + main.DATE_LEGEND:
+        if want not in inside:
+            bad.append("missing %r" % want[:18])
+    if len(main.DATE_ITEMS) != 6:
+        bad.append("%d date items" % len(main.DATE_ITEMS))
+    return bad
+
+
+def check_date_box(pixels, main, log):
+    bad = date_problems(pixels, main, log)
+    check("date check box holds the six excluded stories", not bad,
+          ", ".join(bad[:4]))
+
+
+def list_problems(main, items, log):
+    _featured, rest = main.split_items(items)
+    rows = main.list_rows(rest)
+    bad = []
+    if len(rows) != LIST_LINES:
+        bad.append("%d rows" % len(rows))
+    for idx, (it, text, x, y) in enumerate(rows):
+        if text != it.get("short"):
+            bad.append("row %d text" % idx)
+        hits = [b for b in text_boxes(log) if b[0] == text]
+        if not hits:
+            bad.append("row %d not drawn" % idx)
+            continue
+        _t, tx, ty, tw, _th = hits[0]
+        if tx + tw > x + LIST_COL_W:
+            bad.append("row %d overruns to %d" % (idx, tx + tw))
+        if abs(ty - y) > 1:
+            bad.append("row %d at y=%d not %d" % (idx, ty, y))
+    ys = sorted({y for _it, _t, _x, y in rows})
+    if len(ys) != 7 or any(ys[i + 1] - ys[i] != 20 for i in range(6)):
+        bad.append("row pitch %s" % ys)
+    return bad
+
+
+def check_list(main, items, log):
+    bad = list_problems(main, items, log)
+    check("list is %d single-line rows in three columns" % LIST_LINES,
+          not bad, ", ".join(bad[:4]))
+
+
+def header_problems(log, items):
+    n = len(items)
+    regions = len({i["region"] for i in items})
+    want = "%d STORIES, %d REGIONS" % (n, regions)
+    texts = [t for t, _x, _y, _s, _c in log]
+    bad = []
+    if want not in texts:
+        bad.append("no %r" % want)
+    for text in texts:
+        if "STORIES" in text and text != want:
+            bad.append("stray %r" % text)
+    return bad
+
+
+def check_header(log, items):
+    bad = header_problems(log, items)
+    check("header count matches news.json", not bad, ", ".join(bad[:4]))
 
 
 def pin_problems(pixels, main, items, pins=None):
     """Pin spacing, land contact and drawn markers.  Shared with the selftest."""
     if pins is None:
-        pins = main.pin_layout(items)
-    placed = [p for p in pins if p["merged_into"] is None]
+        pins, _dots = main.pin_layout(items)
     problems = []
-    for i in range(len(placed)):
-        for j in range(i + 1, len(placed)):
-            a, b = placed[i], placed[j]
+    for i in range(len(pins)):
+        for j in range(i + 1, len(pins)):
+            a, b = pins[i], pins[j]
             d = ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5
             if d < PIN_MIN_GAP:
                 problems.append("close %d/%d %.1fpx" % (a["id"], b["id"], d))
-    for p in placed:
+    for p in pins:
         lon, lat = main.unproj(p["x"], p["y"])
         if not main.point_in_land(lon, lat):
             problems.append("pin %d off polygons" % p["id"])
             continue
-        # The marker covers the spot, so require drawn land in the wider
-        # neighbourhood.  Thin islands are a few pixels tall, hence 24 px.
         land = 0
-        for yy in range(p["y"] - 12, p["y"] + 13):
-            for xx in range(p["x"] - 12, p["x"] + 13):
+        for yy in range(p["y"] - 10, p["y"] + 11):
+            for xx in range(p["x"] - 10, p["x"] + 11):
                 if pixel(pixels, xx, yy) in (LAND, COAST):
                     land += 1
         if land < 25:
             problems.append("pin %d on bare panel" % p["id"])
             continue
-        # The marker is a small white disc with a region-coloured centre,
-        # so look across the whole marker rather than just its middle.
         want = REGION_COLOR[p["region"]]
         hit = False
-        for dy in range(-5, 6):
-            for dx in range(-5, 6):
-                if dx * dx + dy * dy > 25:
+        for dy in range(-7, 8):
+            for dx in range(-7, 8):
+                if dx * dx + dy * dy > 49:
                     continue
                 if pixel(pixels, p["x"] + dx, p["y"] + dy) in (want, WHITE):
                     hit = True
@@ -512,67 +642,48 @@ def pin_problems(pixels, main, items, pins=None):
     return problems
 
 
-def marker_radius(pin):
-    """Outer radius of the drawn marker, matching main.draw_map."""
-    return 5 if pin["cluster"] > 1 else 4
+def digit_counts(pixels, pins):
+    out = []
+    for p in pins:
+        n = 0
+        for dy in range(-4, 5):
+            for dx in range(-4, 5):
+                if pixel(pixels, p["x"] + dx, p["y"] + dy) == PIN_INK:
+                    n += 1
+        out.append((p, n))
+    return out
 
 
 def check_pins(pixels, main, items):
-    """Pins are spaced apart, sit on drawn land, and are actually drawn."""
-    problems = pin_problems(pixels, main, items)
+    pins, dots = main.pin_layout(items)
+    problems = pin_problems(pixels, main, items, pins)
     close = [p for p in problems if p.startswith("close")]
-    check("no two pins closer than 12 px", not close, ", ".join(close[:4]))
     rest = [p for p in problems if not p.startswith("close")]
+    check("thirteen numbered pins, no two closer than %d px" % PIN_MIN_GAP,
+          len(pins) == 13 and not close, ", ".join(close[:4]))
     check("every pin sits on drawn land and is drawn", not rest,
           ", ".join(rest[:4]))
+    ranks = sorted(p["rank"] for p in pins)
+    check("pin numbers are 1 to 13", ranks == list(range(1, 14)), str(ranks))
 
-    # Some cities are a few pixels apart on a 472 px world and cannot be
-    # separated within the 14 px nudge while staying on land; those are
-    # merged into one ringed marker.  Require that to stay rare and local.
-    pins = main.pin_layout(items)
-    by_id = {p["id"]: p for p in pins}
-    merged = [p for p in pins if p["merged_into"]]
-    bad = []
-    for p in merged:
-        host = by_id[p["merged_into"]]
-        d = ((p["x"] - host["x"]) ** 2 + (p["y"] - host["y"]) ** 2) ** 0.5
-        if d > 14:
-            bad.append("%d %0.1fpx from %d" % (p["id"], d, host["id"]))
-    hosts = {p["merged_into"] for p in merged}
-    for hid in hosts:
-        if by_id[hid]["cluster"] < 2:
-            bad.append("host %d not marked" % hid)
-    if len(merged) > 3:
-        bad.append("%d merges" % len(merged))
-    check("clustered pins merge locally and are ringed", not bad,
-          ", ".join(bad[:4]))
+    dark = ["%d %dpx" % (p["rank"], n) for p, n in digit_counts(pixels, pins)
+            if n < 3]
+    check("every pin shows its number", not dark, ", ".join(dark[:4]))
 
-    # Drawn markers must not collide, so a crowded region stays readable
-    # instead of becoming one blob of white rings.
-    placed = [p for p in pins if p["merged_into"] is None]
     clash = []
-    for i in range(len(placed)):
-        for j in range(i + 1, len(placed)):
-            a, b = placed[i], placed[j]
-            d = ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5
-            need = marker_radius(a) + marker_radius(b)
-            if d < need:
-                clash.append("%d/%d %.1f<%.0f" % (a["id"], b["id"], d, need))
-    check("pin markers do not overlap", not clash, ", ".join(clash[:4]))
+    for d in dots:
+        for p in pins:
+            if (d["x"] - p["x"]) ** 2 + (d["y"] - p["y"]) ** 2 <= 100:
+                clash.append("%d/%d" % (d["id"], p["id"]))
+    check("story dots clear of numbered pins", not clash, ", ".join(clash[:4]))
 
-    # A US story must not land in Canada, and New York must sit east.
     wrong = []
-    for it in items:
-        if it["region"] != "North America":
+    for p in pins:
+        if p["region"] != "North America":
             continue
-        if it["lat"] > 49.5 and it["lon"] < -60:
-            pin = by_id[it["id"]]
-            lon, lat = main.unproj(pin["x"], pin["y"])
-            if lat > 49.5:
-                wrong.append("%d at %.1fN" % (it["id"], lat))
-    ny = [p for p in pins if p["id"] == 43]
-    if ny and ny[0]["x"] < 640:
-        wrong.append("New York at x=%d" % ny[0]["x"])
+        lon, lat = main.unproj(p["x"], p["y"])
+        if lat > 49.5 and lon < -60:
+            wrong.append("%d at %.1fN" % (p["id"], lat))
     check("US pins stay in the US", not wrong, ", ".join(wrong[:4]))
 
 
@@ -584,12 +695,14 @@ def legend_problems(pixels, main, items):
     bad = []
     if len(layout) != len(regions):
         bad.append("entries=%d" % len(layout))
-    title_end = 12 + main.text_width("ALSO TODAY, 23 MORE", 2)
+    title = "ALSO TODAY, %d MORE" % len([i for i in items
+                                         if not i["featured"]])
+    title_end = 12 + main.text_width(title, 2)
     if layout and layout[0][1] < title_end + 8:
         bad.append("legend at %d, title ends %d" % (layout[0][1], title_end))
     for region, x, w in layout:
         want = REGION_COLOR[region]
-        got = pixel(pixels, x + 4, main.LEGEND_Y + 8)
+        got = pixel(pixels, x + 4, main.LEGEND_Y + 7)
         if got != want:
             bad.append("%s swatch %s" % (region, got))
         if x + w > 1016:
@@ -612,33 +725,85 @@ def check_map(pixels):
             bad.append("%s outside polygons" % name)
             continue
         x = 532 + int((lon + 180.0) * 472 // 360)
-        y = 88 + int((75.0 - lat) * 174 // 133)
-        if not (532 <= x <= 1004 and 88 <= y <= 262):
+        y = 86 + int((75.0 - lat) * 122 // 133)
+        if not (532 <= x <= 1004 and 86 <= y <= 208):
             bad.append("%s off the map area" % name)
     check("reference cities fall on land", not bad, ", ".join(bad))
 
     land_px = 0
-    for yy in range(88, 263):
+    for yy in range(86, 209):
         for xx in range(532, 1005):
             if pixel(pixels, xx, yy) in (LAND, COAST):
                 land_px += 1
     check("map area is actually drawn", land_px > 5000, "%d land px" % land_px)
 
 
+def text_fit_problems(main, log):
+    """No string may leave the panel it belongs to or overlap another."""
+    problems = []
+    panels = [(x, y, main.TILE_W, main.TILE_H)
+              for x in main.TILE_XS for y in main.TILE_YS]
+    panels.append((main.HERO_X, main.HERO_Y, main.HERO_W, main.HERO_H))
+    boxes = text_boxes(log)
+    for text, x, y, w, h in boxes:
+        if x < 0 or x + w > 1024 or y < 0 or y + h > 1024:
+            problems.append("%s off canvas" % text[:12])
+            continue
+        for px, py, pw, ph in panels:
+            if px <= x < px + pw and py <= y < py + ph:
+                if x + w > px + pw or y + h > py + ph:
+                    problems.append("%s overruns its panel" % text[:12])
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            a, b = boxes[i], boxes[j]
+            if a[1:3] == b[1:3] and a[0] == b[0]:
+                continue
+            if overlaps(a[1:], b[1:]):
+                problems.append("%r/%r overlap" % (a[0][:8], b[0][:8]))
+    return problems
 
-def check_no_failure_markers():
-    proc = run_main(os.path.join(tempfile.gettempdir(), "news26_marker"))
-    text = (proc.stdout + proc.stderr).upper()
-    bad = "OVERFLOW" in text or "NOGLYPH" in text
-    check("no OVERFLOW or NOGLYPH", proc.returncode == 0 and not bad,
-          (proc.stderr.strip() or "exit %d" % proc.returncode)[:120])
+
+def check_text_fits(main, log):
+    bad = text_fit_problems(main, log)
+    check("no text leaves its panel or overlaps another string",
+          not bad, ", ".join(bad[:4]))
 
 
-def selftest(pixels, main, items):
+def ascii_dump(main, items, pixels, which):
+    """Print one illustration box as a grid, with its colour census."""
+    boxes = main.scene_box(items)
+    if which < 1 or which > len(boxes):
+        print("tile number must be 1..%d" % len(boxes))
+        return 1
+    label, x, y, w, h = boxes[which - 1]
+    ramp = " .:-=+*#%@"
+    print("%s  box %dx%d at (%d,%d)" % (label, w, h, x, y))
+    for yy in range(y, y + h, 2):
+        row = []
+        for xx in range(x, x + w, 2):
+            r, g, b = pixel(pixels, xx, yy)
+            lum = (r * 3 + g * 6 + b) // 10
+            row.append(ramp[min(9, lum * 10 // 256)])
+        print("%4d %s" % (yy, "".join(row)))
+    colours, diff, base = scene_stats(pixels, x, y, w, h)
+    print("colours=%d  off-base=%.1f%%  base=#%02X%02X%02X"
+          % (colours, diff * 100, base[0], base[1], base[2]))
+    census = {}
+    for yy in range(y, y + h):
+        for xx in range(x, x + w):
+            got = pixel(pixels, xx, yy)
+            census[got] = census.get(got, 0) + 1
+    for col, n in sorted(census.items(), key=lambda kv: -kv[1])[:8]:
+        print("  %5.2f%%  #%02X%02X%02X" % (100.0 * n / (w * h),
+                                             col[0], col[1], col[2]))
+    return 0
+
+
+def selftest(pixels, main, items, log):
     """Tamper with rendered copies and require the real checks to reject them."""
     blanked = bytearray(pixels)
-    for yy in range(TILE_YS[0], TILE_YS[0] + 128):
-        for xx in range(TILE_XS[0], TILE_XS[0] + 246):
+    for yy in range(TILE_YS[0], TILE_YS[0] + main.TILE_H):
+        for xx in range(TILE_XS[0], TILE_XS[0] + main.TILE_W):
             i = (yy * 1024 + xx) * 3
             blanked[i:i + 3] = bytes(BG)
 
@@ -649,31 +814,32 @@ def selftest(pixels, main, items):
     caught_white = bool(white_shortfalls(blanked))
     caught_color = bool(color_mismatches(recoloured, items))
 
-    # Wipe a plate down to bare plate colour, border included: the plate
-    # and pictogram ink checks must both notice.
-    no_icon = bytearray(pixels)
-    _, x, y, w, h = icon_boxes(main, items)[1]
-    fill = plate_interior(pixels, x, y, w, h)
-    for yy in range(y, y + h):
-        for xx in range(x, x + w):
+    flat = bytearray(pixels)
+    _, sx, sy, sw, sh = main.scene_box(items)[3]
+    for yy in range(sy, sy + sh):
+        for xx in range(sx, sx + sw):
             i = (yy * 1024 + xx) * 3
-            no_icon[i:i + 3] = bytes(fill)
-    wiped_plate = bool(pictogram_shortfalls(no_icon, main, items))
+            flat[i:i + 3] = bytes((20, 40, 60))
+    caught_scene = bool(scene_shortfalls(flat, main, items))
 
-    # Flatten one drawn landmass: the land census must drop.
+    # One glyph inside a scene box must trip the no-text check.
+    dirty, dirty_log = main.render(items, main.new_canvas())
+    _, tx, ty, _tw, _th = main.scene_box(items)[5]
+    main.draw_text(dirty, tx + 4, ty + 4, "XXXX", 2, WHITE)
+    caught_text = bool(text_in_scenes(main, items, log, dirty))
+
     no_land = bytearray(pixels)
-    for yy in range(88, 263):
+    for yy in range(86, 209):
         for xx in range(532, 1005):
             i = (yy * 1024 + xx) * 3
             no_land[i:i + 3] = bytes((0x0F, 0x1A, 0x2B))
     land_px = 0
-    for yy in range(88, 263):
+    for yy in range(86, 209):
         for xx in range(532, 1005):
             if pixel(no_land, xx, yy) in (LAND, COAST):
                 land_px += 1
     caught_land = land_px <= 5000
 
-    # Smear the legend row: the swatch colours must no longer match.
     no_legend = bytearray(pixels)
     for yy in range(main.LEGEND_Y - 2, main.LEGEND_Y + 16):
         for xx in range(600, 1020):
@@ -681,57 +847,73 @@ def selftest(pixels, main, items):
             no_legend[i:i + 3] = bytes(BG)
     caught_legend = bool(legend_problems(no_legend, main, items))
 
-    # Erase a pin marker back to bare land: the "is drawn" test must fail,
-    # and the layout must still keep a pin moved into open ocean on land
-    # (by merging it) rather than dropping it in the sea.
-    no_pin = bytearray(pixels)
-    target = [p for p in main.pin_layout(items)
-              if p["merged_into"] is None and p["featured"]][0]
-    for yy in range(target["y"] - 11, target["y"] + 12):
-        for xx in range(target["x"] - 11, target["x"] + 12):
-            if (xx - target["x"]) ** 2 + (yy - target["y"]) ** 2 <= 11 * 11:
-                i = (yy * 1024 + xx) * 3
-                no_pin[i:i + 3] = bytes(LAND)
-    caught_drawn = any("not drawn" in p
-                       for p in pin_problems(no_pin, main, items))
+    pins, _dots = main.pin_layout(items)
+    p = pins[0]
+    no_digit = bytearray(pixels)
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            i = ((p["y"] + dy) * 1024 + p["x"] + dx) * 3
+            no_digit[i:i + 3] = bytes(WHITE)
+    caught_digit = any(n < 3 for _q, n in digit_counts(no_digit, pins))
 
-    moved = json.loads(json.dumps(items))
-    for it in moved:
-        if it["id"] == target["id"]:
-            it["lon"], it["lat"] = -150.0, -10.0
-    caught_moved = all(main.point_in_land(*main.unproj(p["x"], p["y"]))
-                       for p in main.pin_layout(moved)
-                       if p["merged_into"] is None)
+    no_frame = bytearray(pixels)
+    i = ((main.DATE_Y + 1) * 1024 + main.DATE_X + 1) * 3
+    no_frame[i:i + 3] = bytes(BG)
+    caught_frame = bool(date_problems(no_frame, main, log))
 
-    check("selftest: white, colour, icon, map, legend and pin tampers bite",
-          caught_white and caught_color and wiped_plate and caught_land
-          and caught_legend and caught_drawn and caught_moved,
-          "white=%s colour=%s icon=%s land=%s legend=%s drawn=%s moved=%s"
-          % (caught_white, caught_color, wiped_plate, caught_land,
-             caught_legend, caught_drawn, caught_moved))
+    no_status = [row for row in log
+                 if not (row[0].upper() in STATUS_VALUES)]
+    caught_status = bool(status_problems(main, items, no_status))
+
+    no_rows = [row for row in log if row[0] not in
+               {i.get("short") for i in items if not i.get("featured")}]
+    caught_rows = bool(list_problems(main, items, no_rows))
+
+    check("selftest: every pixel and layout check bites",
+          caught_white and caught_color and caught_scene and caught_text
+          and caught_land and caught_legend and caught_digit and caught_frame
+          and caught_status and caught_rows,
+          "white=%s colour=%s scene=%s text=%s land=%s legend=%s digit=%s "
+          "frame=%s status=%s rows=%s"
+          % (caught_white, caught_color, caught_scene, caught_text,
+             caught_land, caught_legend, caught_digit, caught_frame,
+             caught_status, caught_rows))
 
 
 def main():
     tmp = tempfile.mkdtemp(prefix="news26_check_")
     main_mod = load_main_module()
-    items = json.load(open(NEWS, encoding="utf-8"))
+    items = load_news()
     try:
         png = check_deterministic(tmp)
         ok, pixels = check_png(png)
+        if pixels is None:
+            return 1
+        if "--ascii" in sys.argv:
+            idx = int(sys.argv[sys.argv.index("--ascii") + 1])
+            return ascii_dump(main_mod, items, pixels, idx)
         check_size(png)
         check_imports()
         check_news()
         check_stats()
+        check_headline_budget(main_mod, items)
+        check_source_status()
         check_no_failure_markers()
-        if pixels is not None:
-            check_colors(pixels, items)
-            check_white(pixels)
-            check_map(pixels)
-            check_icons(pixels, main_mod, items)
-            check_pins(pixels, main_mod, items)
-            check_legend(pixels, main_mod, items)
-        if "--selftest" in sys.argv and pixels is not None:
-            selftest(pixels, main_mod, items)
+        _buf, log = main_mod.render(items, main_mod.new_canvas())
+        check_header(log, items)
+        check_colors(pixels, items)
+        check_white(pixels)
+        check_map(pixels)
+        check_scenes(pixels, main_mod, items)
+        check_no_text_in_scenes(pixels, main_mod, items, log)
+        check_status_rows(main_mod, items, log)
+        check_date_box(pixels, main_mod, log)
+        check_list(main_mod, items, log)
+        check_pins(pixels, main_mod, items)
+        check_legend(pixels, main_mod, items)
+        check_text_fits(main_mod, log)
+        if "--selftest" in sys.argv:
+            selftest(pixels, main_mod, items, log)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
